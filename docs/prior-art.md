@@ -1,9 +1,10 @@
-# Prior art: how the owner's projects cache LLM calls
+# Prior art: existing LLM caches
 
-This doc surveys the existing caches that llmemo's requirements come from. Back to the
-[README](../README.md). It describes each repository as of 2026-11-20. These repos aren't
-being changed for now, so this is a snapshot. Requirement IDs (K1, S5, …) refer to the
-README.
+This doc surveys the existing caches that llmemo's requirements come from: first the
+owner's own projects, then [libraries and tools that already exist](#existing-solutions).
+Back to the [README](../README.md). It describes each repository as of 2026-11-20. These
+repos aren't being changed for now, so this is a snapshot. Requirement IDs (K1, S5, …)
+refer to the README.
 
 ## Summary
 
@@ -17,7 +18,7 @@ README.
 | Committed | yes | yes | yes (completions); embeddings are gitignored | yes | yes |
 | Size | 103,834 entries, 517 MB | 1,610 entries; separately 60,052 embedding files, 2.1 GB | 75 MB | 879 entries, 13 MB | — |
 | Parallel safety | none (async calls that miss together all pay) | none | diskcache's | lock files, temp file and link, first writer wins | required (CE 13) |
-| Modes | read-write; global "don't read" flag | read-write | read-write | record / replay-only (default) | read-write, cache-only, refresh, dry run |
+| Modes | read-write; global "don't read" flag | read-write | read-write | record / replay-only (default) | read-write, cache-only, refresh |
 | Failures | `.exception` files for diagnosis; `.inject` replays one | not cached | not cached | invalid replies cached; transport errors never | configurable (CE 10) |
 
 ## WordSpace
@@ -72,7 +73,8 @@ Python. The code is in `llm_cache.py`, `llm.py`, `llm_cache_maintenance.py`, and
 
 **Retrofitting.** The `.txt` files hold the key string and the full prompt, so an
 importer could convert each entry to llmemo's format. It would have to rebuild the
-structured key from the `repr` string and map enum names (T8). `invoke_llm()` would call
+structured key from the `repr` string and map enum names. This would be a one-off
+script, since llmemo doesn't ship importers (T8 was withdrawn). `invoke_llm()` would call
 `cache.call()` instead of using `LLMCache` directly. Exception injection would map to E5.
 
 ## SoCloverAI
@@ -116,7 +118,9 @@ Python. It has three generations of caching, one per subproject.
 - Depending on a library's internal cache is fragile. litellm 1.105.0's cache-hit path
   imported proxy code that needed `fastapi`, so every cached call failed. litellm is now
   pinned to one minor line, and the AGENTS.md says to check the cache path by hand after
-  any upgrade.
+  any upgrade. Since then, litellm 1.109 (2026-10-30) has removed the disk cache backend
+  entirely (see [litellm](#litellm) below), so SoCloverAI can't upgrade past 1.108
+  without replacing its cache.
 - A one-file JSON cache rewritten on every call doesn't scale, and it conflicts on every
   merge (S1, S3).
 - Passing the trial number through an API parameter is a workaround for a key that the
@@ -185,7 +189,7 @@ TypeScript (Node for tests, plus the browser). The design is in `Architecture.md
 - The VS Code settings leave `llm-cache/` out of search and the file watcher.
 
 **Lessons.** Most of llmemo's storage, mode, and safety requirements come from Threshold:
-K4, K5, K10, E1, E3, S5, S6, S8, M2, A5, T2, T3, and T5. The README's notes on
+K4, K5, K10, E1, E3, S5, S6, S8, M2, A5, T3, and T5. The README's notes on
 committing and pruning carry over unchanged. Pruning shrinks the working tree, not the
 repository. Git compresses entries well (about 20× when packed). A flat directory hits
 GitHub's 1,000-file listing limit, which is why S2 uses folders.
@@ -195,7 +199,8 @@ GitHub's 1,000-file listing limit, which is why S2 uses folders.
 keys plus `JSON.stringify`) is probably already equivalent to RFC 8785 for the data it
 hashes (see [cross-language.md](cross-language.md)). The changes would be llmemo's key
 structure, hash-prefix folders, and the shared entry schema. Because the key structure
-changes, its existing entries would be rehashed and moved by an importer (T8).
+changes, its existing entries would be rehashed and moved by a one-off script, or
+re-recorded.
 
 ## ConceptExpansion
 
@@ -206,12 +211,14 @@ Decisions table records that results are stored as a committed cache of LLM call
   headless as a subprocess, on the owner's Claude subscription. OpenRouter may come
   later. So the subprocess backend is required (CE 19, A1).
 - The plan suggests `sim/cache/` for entries and `sim/runs/<run-id>.json` for each run's
-  settings and games, so run manifests matter (CE 23, T2).
+  settings and games. The hashes a run used can come from the `onEntryUsed` hook (CE 23,
+  A5), so llmemo has no separate manifest format (T2 was withdrawn).
 - Large reference docs (`board-icons.md` and `pictured-elements.md`) go into every call,
   so storing large inputs once matters (CE 12, S4). Editing them invalidates the whole
   cache, which is expected.
-- The Pro subscription's usage limits are tight, so a dry run that counts misses and
-  estimates usage before a run matters (CE 18, M4).
+- The Pro subscription's usage limits are tight. A dry run (M4) was withdrawn because
+  every call after the first miss depends on the missing reply. `contains(key)` (CE 18,
+  A9) and the spending limit (M6) cover this instead.
 - Reruns must make exactly the same calls, so the harness avoids unseeded randomness.
   That determinism is the caller's job (see the README's Non-goals).
 - The cache will contain the answers to the game. The harness keeps them away from the
@@ -230,3 +237,316 @@ tagged `[CE n]`.
   scope, and would go in a separate module (README Decisions).
 - **Jupyter compatibility** matters in WordSpace and SoCloverAI, where a running event
   loop breaks `asyncio.TaskGroup` (A3).
+
+## Existing solutions
+
+Researched on 2026-11-20 to answer "does something already do this?" (see the README's
+Decisions). For each tool, the source was read at its main branch on that date unless
+noted. A tool doesn't need to meet every requirement to be useful. The question is whether
+it could do the same job for ConceptExpansion, WordSpace, SoCloverAI, and Threshold, and
+what would go wrong if it did.
+
+### Conclusion
+
+No existing tool does the core job: a committed, mergeable cache, keyed by data the caller
+controls, with a hash that two languages can reproduce. The tools fall into four groups,
+and each group misses for its own reason:
+
+- **HTTP record/replay** (vcrpy, Polly.js, retake). These are the closest in spirit:
+  record once, replay in CI, fail on a miss. But they can't see `claude -p`, they key on
+  HTTP requests the caller doesn't fully control, and their cassettes are one file per
+  test.
+- **Framework caches** (litellm, LangChain, DSPy, Inspect AI, promptfoo). These are
+  speedups for one framework. Each one hashes Python- or framework-specific strings,
+  stores pickles or one big file, and doesn't record cost.
+- **General function caches** (joblib, diskcache, requests-cache). These cache anything,
+  but use pickle and have no parallel-safe recording or LLM metadata.
+- **New LLM record/replay libraries** (agent-replay-fixtures, llm-cassette, llm-replay).
+  They have the right idea, but each is a few weeks old with one author and no users, and
+  none covers storage at scale, cost, or a second language.
+
+Recommendation: build llmemo, and borrow the ideas listed in
+[Ideas to borrow](#ideas-to-borrow).
+
+### Summary
+
+| Tool | Kind | Language | Storage | Key and hash | Parallel recording | Cost stored | Fit |
+|---|---|---|---|---|---|---|---|
+| [vcrpy](https://github.com/kevin1024/vcrpy) + [pytest-recording](https://github.com/kiwicom/pytest-recording) | HTTP record/replay | Python | one YAML cassette per test | HTTP method and URL by default. No hash | no (whole cassette rewritten) | no | partial, for tests only |
+| [Polly.js](https://github.com/Netflix/pollyjs) | HTTP record/replay | JS | one HAR file per recording | request fields, hashed | no | no | partial, for tests only |
+| [retake](https://github.com/Zecrari/retake) | HTTP proxy | Rust binary | cassettes folder | normalized request | not reviewed | no | poor |
+| [litellm](https://github.com/BerriAI/litellm) | framework cache | Python | memory, Redis, or cloud buckets (disk removed) | SHA-256 of Python `repr` fragments | no | no | no |
+| [LangChain](https://github.com/langchain-ai/langchain) | framework cache | Python, JS | memory, SQLite, Redis, … | prompt plus `str(sorted(params))` | depends on backend | no | no |
+| [DSPy](https://github.com/stanfordnlp/dspy) | framework cache | Python | diskcache (SQLite plus pickle) | SHA-256 of sorted-key JSON | SQLite | no (usage cleared on hit) | no |
+| [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai) | framework cache | Python | one pickle per entry, a folder per model | MD5 of `str()` of pydantic dumps | no | token usage, inside the pickled output | no |
+| [promptfoo](https://github.com/promptfoo/promptfoo) | framework cache | TypeScript | one `cache.json` | SHA-256 of the fetch request | no | not checked | no |
+| [Vercel AI SDK middleware](https://ai-sdk.dev/docs/advanced/caching) | hook only | TypeScript | whatever you write | whatever you write | — | — | an integration point |
+| [joblib.Memory](https://joblib.readthedocs.io/en/stable/memory.html) | function cache | Python | pickle files, a folder per function | joblib hash of pickled arguments | no | no | no |
+| [requests-cache](https://github.com/requests-cache/requests-cache) | HTTP cache | Python | SQLite, or one JSON or YAML file per response | request, including body | thread lock only | no | no |
+| [agent-replay-fixtures](https://github.com/buxerr/agent-replay-fixtures) | LLM record/replay | Python | one compact JSON file per request | SHA-256 of sorted-key JSON | lock folder, then rename | no | closest, but immature |
+| [llm-cassette](https://github.com/gangjig/llm-cassette) | LLM record/replay | Python | one JSONL cassette per test | SHA-256 of sorted-key JSON | no | no | partial |
+| [llm-replay](https://github.com/y-kum/llm-replay) | LLM record/replay | Python | one JSONL tape | SHA-256 of JSON with `default=str` | thread lock only | no | partial |
+| [GPTCache](https://github.com/zilliztech/GPTCache) | semantic cache | Python | vector store plus SQL | embedding similarity | — | no | out of scope |
+
+### HTTP record/replay
+
+#### vcrpy and pytest-recording
+
+vcrpy (3k stars, MIT, active) patches Python HTTP clients. It records each request and
+response into a YAML "cassette", one per test by default, and replays them later.
+pytest-recording adds `--record-mode` and `--block-network`, and its default mode is
+`none`, which replays only and fails on a miss. Many LLM projects test this way, including
+Pydantic AI and CrewAI.
+
+**How it works**
+
+- The default matchers are method, scheme, host, port, path, and query. **The request
+  body isn't compared by default**, so every POST to `/chat/completions` matches every
+  other one, and replies are replayed in the order they were recorded. Adding the `body`
+  matcher compares JSON bodies as parsed data.
+- A cassette is written in full, with a plain `open("w")`, when the test ends.
+- Auth headers are recorded unless they're listed in `filter_headers`.
+- The YAML loader is now a safe loader that refuses `!!python/object` tags.
+- Bodies are stored as one escaped string. Pydantic AI wrote its own serializer that moves
+  JSON bodies into a `parsed_body` field, so cassettes are readable in diffs.
+
+**Shortcomings with these projects**
+
+- **It can't see `claude -p`.** The CLI is a subprocess, and vcrpy only patches HTTP in
+  its own process. That's ConceptExpansion's main backend (A1, A10). Pointing the CLI at a
+  proxy wouldn't help either. One `claude -p` run makes several API calls whose bodies are
+  likely to include per-session values, so the keys would never repeat.
+- **The key is the HTTP request, not the caller's key.** There's no place for a variant,
+  attempt, or label (K3–K5) except stuffing them into the request, which is the `user=`
+  workaround SoCloverAI already regrets. Fields that matter to the caller but aren't in
+  the request, such as attachment hashes (K9), can't be added. Fields in the request that
+  don't matter, such as a client version header, have to be filtered out by hand.
+- **Order-based matching is fragile.** With the default matchers, a test that makes the
+  same calls in a different order, or in parallel, gets the wrong replies without any
+  error.
+- **One file per test doesn't scale.** WordSpace's 104k calls and SoCloverAI's
+  experiments aren't tests. A cassette for a whole experiment would be one huge YAML file
+  that conflicts on every merge (S1, S3, S9). Two pytest-xdist workers or two processes
+  writing the same cassette overwrite each other (S5, S6).
+- **Long text isn't readable.** Prompts and replies are escaped JSON inside YAML strings,
+  and gzip-compressed responses are stored as binary unless `decode_compressed_response`
+  is set (S4).
+- **Secrets are recorded by default** unless every project lists the right headers
+  (`authorization`, `x-api-key`, `api-key`) (E4).
+- **No cost, latency, or stats** (E2, A4, T4), and no pruning by used entries (T3).
+- **No shared format with TypeScript.** Polly.js and nock each use their own (X1).
+
+What it gets right: record modes, failing loudly on a miss in CI, blocking the network,
+and replaying streamed responses as streams (E6).
+
+#### Polly.js
+
+Netflix's record/replay library for Node and the browser (10k stars, Apache-2.0). Its last
+commit was in May 2025, so it's effectively unmaintained. Recordings are HAR files, one
+per recording name, and requests are matched by configurable fields (`matchRequestsBy`).
+It has the same shortcomings as vcrpy: one file per test, keys built from HTTP requests,
+and no cost. It also has an open issue that recordings aren't rematched when
+`matchRequestsBy` changes. Threshold's own cache already does more than Polly would.
+
+#### retake
+
+A single-binary Rust proxy, created in October 2026, with no users yet. It sets
+`OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` for the command it runs and records to a
+cassettes folder, so it works for any language. Being a proxy, it has the same key problems
+as vcrpy, and the `claude -p` problem above. It's too new to depend on.
+
+### Framework caches
+
+#### litellm
+
+litellm's `Cache` covers completions and embeddings. **litellm 1.109 (2026-10-30,
+[PR #48114](https://github.com/BerriAI/litellm/pull/48114)) removed the disk backend** that
+SoCloverAI's GenerateKeywordCards2 uses, along with the diskcache dependency, because
+diskcache hasn't had a release since August 2023. The remaining backends are in-memory,
+Redis, S3, GCS, Azure Blob, and semantic caches in Redis, Valkey, or Qdrant. None of them
+can be committed.
+
+**Shortcomings with these projects**
+
+- No local file backend at all now, so nothing to commit (Goal 2).
+- The key is a SHA-256 over `repr()` fragments of the call's keyword arguments, filtered
+  by litellm's own list of API parameters. No other language can reproduce it (K1, X3),
+  and a litellm upgrade can change which parameters count, silently invalidating the
+  cache.
+- There's no variant or attempt (K3, K4), which led to SoCloverAI's `user=` workaround.
+- It only works for calls made through litellm, so not for `claude -p` (A1).
+- SoCloverAI has already been broken by its cache-hit path once (litellm 1.105.0).
+
+#### LangChain
+
+`BaseCache.lookup(prompt, llm_string)`: the key is the prompt plus a string describing the
+model, built with `str(sorted(params.items()))` or `json.dumps` of LangChain's own
+serialization. Backends include in-memory, SQLite, Redis, and many databases. Values are
+LangChain `Generation` objects. SoCloverAI's GenerateClues already showed the problems:
+the key is LangChain-specific and Python-specific (K1), values are tied to LangChain's
+classes (E1), and nothing records cost. It only works inside LangChain.
+
+#### DSPy
+
+DSPy (39k stars) has a two-level cache: an in-memory LRU in front of a diskcache
+`FanoutCache` (16 SQLite shards plus pickled values).
+
+**How it works**
+
+- The key is the SHA-256 of `orjson.dumps(request, OPT_SORT_KEYS)`. That's the closest
+  any framework comes to canonical JSON. But before hashing, pydantic models become their
+  JSON schema and **callables become their source code**, so editing an unrelated line in
+  a callable changes the key.
+- `rollout_id`, an integer, separates otherwise identical calls, much like K3.
+- Unpickling is restricted to known-safe types by default (`restrict_pickle=True`).
+- The disk cache's default limit is 30 GB, and diskcache evicts old entries silently
+  when the limit is reached.
+- **On a hit, usage is cleared** to `{}`, so a replayed run can't report what it would have
+  cost.
+
+**Shortcomings with these projects:** SQLite plus pickle can't be committed or merged (S3,
+the same problem SoCloverAI has with litellm's disk cache). Silent eviction breaks "replay
+forever" (Goal 1), as it did for SoCloverAI's embeddings. Cost isn't kept (Goal 6). It
+only works inside DSPy programs.
+
+#### Inspect AI
+
+The UK AI Security Institute's evaluation framework (3.3k stars). Caching is opt-in per
+`generate()` call.
+
+**How it works**
+
+- Entries live in the user's cache directory (`INSPECT_CACHE_DIR` overrides it), in
+  `generate/<model>/<md5>`, one pickle file per entry holding `(expiry, ModelOutput)`.
+- The key is the MD5 of `"|".join(str(c) for c in components)`, where the components are
+  the generate config, `str(message.model_dump())` for each message, the base URL, tools,
+  tool choice, the expiry period, scopes, and the epoch.
+- The epoch works like a variant (K3), and `scopes` adds caller-defined key fields (K2).
+- Entries expire after one week by default and are deleted when read after that.
+- Refusals stopped by a content filter are deliberately not cached, so a retry gets a
+  fresh attempt. (llmemo instead puts the attempt in the key, K4.)
+- It sorts config fields into two groups: *dropped* fields, which never enter the key,
+  and *neutralized* fields, which already entered old keys and are now always hashed at
+  their default. That way, deciding a field doesn't matter doesn't invalidate existing
+  entries. This is a careful answer to the same problem as K8.
+
+**Shortcomings with these projects:** `str()` of pydantic dumps and MD5 can't be
+reproduced in TypeScript (K1). Pickle is unsafe to load from a shared repo and can't be
+diffed (S3, S8). **The expiry period is part of the key**, so changing the cache policy
+invalidates everything, and the default expiry deletes entries, which defeats a permanent
+record (Goal 1). Files are written in place with no lock, so a crash leaves a broken entry
+and parallel samples that miss together all pay (S5, S6). It's tied to Inspect's own model
+API.
+
+#### promptfoo
+
+An LLM evaluation CLI (27k stars, TypeScript). Its cache is a single `cache.json` file in
+`~/.promptfoo/cache`, written through keyv-file, with a 14-day expiry by default. Keys are
+`fetch:v3:` plus a hash of the request. One file rewritten on every change can't be
+committed usefully (S1, S3), and the expiry works against a permanent record. It speeds up
+repeated evals and isn't a library for application code.
+
+#### Vercel AI SDK middleware
+
+Not a cache. The AI SDK's `wrapLanguageModel` takes middleware with `wrapGenerate` and
+`wrapStream` hooks, and the docs show caching recipes (a `Map`, Redis, a local file).
+It's the natural place for a future TypeScript llmemo package to plug in for projects
+that use the AI SDK, and its stream helpers show how a cached reply can be replayed as a
+stream (E6). Threshold calls OpenRouter directly, so it wouldn't need it.
+
+### General function caches
+
+#### joblib.Memory
+
+Caches any Python function's results on disk, in a folder per function named after its
+module and function name, keyed by joblib's hash of the pickled arguments. It would work
+around a `claude -p` subprocess call, which the HTTP tools can't. But results are pickled
+(S3, S8), the hash is Python-only (K1), renaming or moving the function orphans its
+entries, and changing the function's source invalidates its cache, which is the opposite
+of what E1 wants. There's no parallel-safe recording, metadata, or stats.
+
+#### diskcache
+
+Already described under SoCloverAI. SQLite plus pickle, not mergeable, and silent
+eviction at its size limit. Its last commit was in August 2024 and its last release in
+August 2023.
+
+#### requests-cache (and hishel)
+
+HTTP caching for `requests` (and hishel for `httpx`). requests-cache's filesystem backend
+writes one JSON or YAML file per response, which is closer to what git wants. But it
+follows HTTP caching rules (expiry, revalidation), keys on the HTTP request, uses only a
+thread lock (so it's not safe across processes), and has the same `claude -p` and key
+problems as vcrpy.
+
+### New LLM record/replay libraries
+
+Several small libraries appeared in October and November 2026. Each has one author and
+0–1 stars. They're useful as a check on llmemo's design, not as dependencies.
+
+#### agent-replay-fixtures
+
+The closest to llmemo's design (about 460 lines of Python, MIT).
+
+- `TraceRecorder.record(request, events)` writes `<sha256>.json`. The hash is of the
+  request after secrets are redacted, serialized with `json.dumps(sort_keys=True,
+  separators=(",", ":"), ensure_ascii=False, allow_nan=False)`.
+- The file is an envelope holding the payload and a SHA-256 of the payload, so edits are
+  detected on read (like K10). Reads enforce a 16 MiB size limit and reject duplicate JSON
+  keys (S8).
+- Writes go to a temp file with `fsync`, take a lock by creating a `<hash>.lock` folder,
+  and then `os.replace` the file into place. If a different trace already exists, it
+  raises an error (S5, S7).
+- A miss raises an error. There's no fallback to a live call (M2).
+
+**Shortcomings with these projects**
+
+- Python's `json.dumps` isn't RFC 8785: it formats floats and sorts keys differently from
+  JavaScript (see [cross-language.md](cross-language.md)), so a TypeScript port couldn't
+  match every hash (K1).
+- Entries are compact one-line JSON, so prompts and replies aren't readable in diffs, and
+  repeated text is stored again in every entry (S1, S4).
+- The directory is flat (S2).
+- A writer that crashes while holding the lock leaves the lock folder behind, and every
+  later write of that key fails. Nothing ever expires the lock (S6).
+- A second caller that needs the same missing entry gets an error instead of waiting for
+  the first one (S6).
+- Redacting before hashing means that changing the redaction rules changes keys.
+- There's no read-write mode, async API, cost or latency metadata, stats, or pruning (M1,
+  A3, E2, A4, T3).
+
+#### llm-cassette
+
+Wraps any callable (A1) or runs as an OpenAI-compatible replay server or recording proxy.
+Interactions are appended to a JSONL cassette, one per test, and matched by the SHA-256 of
+sorted-key JSON. One cassette per test has the same scaling and merge problems as vcrpy,
+and JSONL escapes every newline (S1, S4, S9).
+
+#### llm-replay
+
+Adapters for the OpenAI, Anthropic, and Google SDKs that record to a JSONL "tape", with a
+read-only replay mode. Its canonical JSON uses `default=str`, so any non-JSON value enters
+the key as its Python `str()` (K1, X3). It has the same one-file problems as llm-cassette.
+
+### Semantic caches
+
+GPTCache (8k stars) and litellm's semantic backends return a cached reply when a new prompt
+is *similar* to an old one. That's a non-goal for llmemo, since a hit must mean the same
+key.
+
+### Ideas to borrow
+
+- **Record modes and blocking the network** in CI (vcrpy, pytest-recording) match M1, M2,
+  and M5. A pytest plugin could offer the same flags later.
+- **Readable bodies:** Pydantic AI's `parsed_body` serializer exists because escaped JSON
+  is unreadable in cassettes. That's the same reason for S4.
+- **Dropped vs. neutralized key fields** (Inspect AI) is a clean way to state K8's rule
+  for fields that turn out not to matter.
+- **Don't put expiry or cache policy in the key** (Inspect AI shows why).
+- **A hash of the stored payload** inside the entry, and `fsync` before linking
+  (agent-replay-fixtures), strengthen K10 and S5.
+- **Keep usage on a hit.** DSPy clears it, so its replayed runs can't report cost. llmemo
+  returns the recorded usage and cost with every hit (A4, Goal 6).
+- **An integer replicate isn't enough on its own.** DSPy's `rollout_id` and Inspect's
+  epoch are both integers. llmemo's free-form `variant` also covers rerolls and branches
+  (README Decisions).

@@ -297,8 +297,10 @@ typescript/     Future TypeScript package
 
 ## Documentation
 
-- [docs/prior-art.md](docs/prior-art.md): how each existing project caches LLM calls,
-  what worked, what didn't, and how each could move onto llmemo.
+- [docs/prior-art.md](docs/prior-art.md): how each of the owner's projects caches LLM
+  calls, what worked, what didn't, and how each could move onto llmemo. It also reviews
+  existing libraries and tools (vcrpy, litellm, DSPy, Inspect AI, and others) and what
+  would go wrong if these projects used them.
 - [docs/cross-language.md](docs/cross-language.md): where Python and TypeScript disagree
   on JSON, hashing, and files, and how the format avoids those differences.
 - [CLAUDE.md](CLAUDE.md): instructions for AI agents working in this repo.
@@ -332,6 +334,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-20 | Embedding vectors are stored as binary files, float64 by default and float32 on request. Large embedding caches are gitignored | Measured on SoCloverAI's 1,536-dimension vectors: 34 KB each as JSON, 12 KB as float64 (exact), 6 KB as float32 (rounds every value by about 1 part in 10⁸). gzip saves only about 15% on floats |
 | 2026-11-20 | The OpenRouter key is in `OPENROUTER_API_KEY`, a Codespaces secret declared in the devcontainer | Keeps the key out of the repo |
 | 2026-11-20 | ConceptExpansion's requirements 3, 15, and 21 updated to match llmemo ([ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2)) | Its checklist should agree with the package |
+| 2026-11-20 | Build llmemo rather than adopt an existing tool | No library or tool researched meets the core requirements: committed and mergeable files, caller-defined keys, a cross-language hash, and `claude -p` support ([docs/prior-art.md](docs/prior-art.md#existing-solutions)) |
 
 ## Open questions
 
@@ -339,15 +342,14 @@ None right now.
 
 ## Next steps
 
-1. **Research existing solutions** against these requirements, especially S1–S6, K1,
-   and A1. Record the findings in `docs/`.
-2. **Write the format spec** in `spec/` (X1): key structure, canonicalization, hashing,
-   entry schema, layout, stored text and vectors, and versions. Add test vectors (X2).
-3. **Set up the Python package** in `python/`: MIT `LICENSE`, `pyproject.toml`, and
+1. **Write the format spec** in `spec/` (X1): key structure, canonicalization, hashing,
+   entry schema, layout, stored text and vectors, and versions. Add test vectors (X2). Use the "Ideas to borrow" list in
+   [docs/prior-art.md](docs/prior-art.md#ideas-to-borrow).
+2. **Set up the Python package** in `python/`: MIT `LICENSE`, `pyproject.toml`, and
    tooling (the owner's other Python projects use uv, ruff, mypy in strict mode, and
    pytest). Update the devcontainer's `postCreateCommand`, which installs from the repo
    root.
-4. **Build the core:** hashing, file and memory stores, `call()` (sync and async), both
+3. **Build the core:** hashing, file and memory stores, `call()` (sync and async), both
    modes, stats, atomic writes, locking, and the spending limit.
-5. **Hand off to ConceptExpansion** for its harness phase 1 (after
+4. **Hand off to ConceptExpansion** for its harness phase 1 (after
    [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).
