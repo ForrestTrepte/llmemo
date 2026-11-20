@@ -8,7 +8,9 @@
     // Node.js is needed by the Claude Code CLI feature below.
     "ghcr.io/devcontainers/features/node:1": {},
     // Puts the `claude` CLI on the PATH for use in the terminal.
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {},
+    // GitHub CLI (`gh`) for PRs, issues, and Actions; uses the Codespace token automatically.
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
   // Keep Claude Code's login and settings across container rebuilds.
@@ -17,6 +19,15 @@
   ],
 
   "customizations": {
+    // Grant this Codespace's token access to related repos (approved on Codespace creation).
+    "codespaces": {
+      "repositories": {
+        "ForrestTrepte/SoCloverAI": { "permissions": { "contents": "write", "pull_requests": "write" } },
+        "ForrestTrepte/ConceptExpansion": { "permissions": { "contents": "write", "pull_requests": "write" } },
+        "ForrestTrepte/Threshold": { "permissions": { "contents": "write", "pull_requests": "write" } },
+        "ForrestTrepte/WordSpace": { "permissions": { "contents": "write", "pull_requests": "write" } }
+      }
+    },
     "vscode": {
       "extensions": [
         "anthropic.claude-code",
