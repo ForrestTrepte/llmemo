@@ -1,0 +1,33 @@
+{
+  "name": "reserved-names",
+  "description": "Member names starting with $…llmemo get one more $ in the stored form (§4.3). $schema and $ref don't.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "$llmemo.text": "not a reference",
+      "$$llmemo": 1,
+      "$llmemoX": 2,
+      "$schema": "x",
+      "$ref": "#/y",
+      "llmemo": 3
+    }
+  },
+  "reply": {
+    "$llmemo.f64": [
+      1,
+      2
+    ],
+    "x$llmemo": true
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "b3bdd7c4198031a436be8fefd949f3df557e05071958232da9c3e8c5edc305c3",
+  "expectedReply": {
+    "$llmemo.f64": [
+      1,
+      2
+    ],
+    "x$llmemo": true
+  }
+}

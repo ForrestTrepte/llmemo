@@ -1,0 +1,18 @@
+{
+  "contentSha256": "7ce165ef35e2482b32bff700690285434bb4d2393ba57c07b7ca2533f15000d9",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "$llmemo.text": "9e4efed0ff1dbcf37240f82e1aad6c763eb9331434d2b394a6441abbbe3634eb"
+  }
+}

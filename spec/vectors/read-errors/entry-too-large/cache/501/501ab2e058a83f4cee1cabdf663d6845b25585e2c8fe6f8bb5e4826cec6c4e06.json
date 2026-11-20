@@ -1,0 +1,16 @@
+{
+  "contentSha256": "d24923841d98dcd5a081ba3b99596483edeeca895b41ded64c8aa77a3c438fa7",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}

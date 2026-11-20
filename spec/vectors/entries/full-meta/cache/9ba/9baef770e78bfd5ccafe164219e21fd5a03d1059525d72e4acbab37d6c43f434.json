@@ -1,0 +1,57 @@
+{
+  "contentSha256": "d90af10a395a6dbfe19340cec76818c2361f1b739a1edd20a82201d2b70f6632",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 2,
+    "keyFormat": 1,
+    "label": "clue-giver",
+    "request": {
+      "backend": "claude-cli",
+      "model": "claude-haiku-4-5-20251001",
+      "prompt": "Prompt: Lighthouse",
+      "settings": {
+        "effort": "low",
+        "tools": []
+      }
+    },
+    "variant": "trial-3"
+  },
+  "meta": {
+    "codeVersion": "5203929-dirty",
+    "costUsd": 0.0021,
+    "extra": {
+      "timeoutS": 120
+    },
+    "latencyMs": 4120,
+    "recordedAt": "2026-11-20T22:15:00.123Z",
+    "recordedBy": "developer",
+    "servedBy": "anthropic",
+    "servedModel": "claude-haiku-4-5-20251001",
+    "tags": {
+      "game": "17",
+      "role": "clue-giver",
+      "run": "2026-11-20-a"
+    },
+    "toolVersion": "claude 2.1.3",
+    "usage": {
+      "cacheReadTokens": 1700,
+      "cacheWriteTokens": 0,
+      "inputTokens": 1830,
+      "outputTokens": 64,
+      "reasoningTokens": 0
+    }
+  },
+  "reply": {
+    "duration_ms": 4120,
+    "is_error": false,
+    "result": "{\"placements\": [\"A1\", \"C4\"]}",
+    "subtype": "success",
+    "total_cost_usd": 0.0021,
+    "type": "result",
+    "usage": {
+      "cache_read_input_tokens": 1700,
+      "input_tokens": 130,
+      "output_tokens": 64
+    }
+  }
+}

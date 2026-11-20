@@ -2,8 +2,8 @@
 
 A record-and-replay cache for LLM calls, stored as plain files that are committed to git.
 
-**Status (2026-11-20): requirements stage. No code yet.** This README holds the project's
-goals and requirements. The first implementation will be a Python package, and its first
+**Status (2026-11-20): the format spec and test vectors are written ([spec/](spec/README.md)).
+No package code yet.** This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
 user is [ConceptExpansion](https://github.com/ForrestTrepte/ConceptExpansion). A TypeScript
 package that reads and writes the same cache format may follow, in this same repository.
 
@@ -79,8 +79,7 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 
 - **K1. Stable hash.** The entry ID is the SHA-256 of the key's canonical JSON, as
   lowercase hex. Python and TypeScript must produce identical bytes, so canonicalization
-  follows a written spec (RFC 8785 is the leading candidate; see
-  [docs/cross-language.md](docs/cross-language.md)). It never uses Python's `hash()`,
+  follows RFC 8785 ([spec/format.md](spec/format.md) §2). It never uses Python's `hash()`,
   `repr`/`str` of objects, or pickle. `[CE 1] [T]`
 - **K2. The caller defines the key.** The caller passes the key as plain JSON data:
   backend, exact model ID (not an alias), system prompt, messages, tools, every setting,
@@ -142,7 +141,7 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
   write-ahead-log files can't be merged, and pickle runs code when it is loaded. A single
   JSON file has to be rewritten on every call and conflicts on every merge. `[CE 11] [SC]`
 - **S4. Large text is stored once, with real newlines.** Any string in a key or reply
-  that contains a newline, or is longer than a set number of characters, is stored as a
+  that contains a newline, or is longer than 512 UTF-8 bytes, is stored as a
   plain `.txt` file named by its SHA-256, in the same 3-hex-digit folders as entries. The
   entry refers to the file instead of holding the text. The same text is stored only
   once, wherever it appears, and it's readable in diffs. Details:
@@ -297,6 +296,9 @@ typescript/     Future TypeScript package
 
 ## Documentation
 
+- [spec/format.md](spec/format.md): the cache format, with its
+  [test vectors](spec/vectors/README.md). This is the contract between the Python and
+  TypeScript packages.
 - [docs/prior-art.md](docs/prior-art.md): how each of the owner's projects caches LLM
   calls, what worked, what didn't, and how each could move onto llmemo. It also reviews
   existing libraries and tools (vcrpy, litellm, DSPy, Inspect AI, and others) and what
@@ -335,6 +337,13 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-20 | The OpenRouter key is in `OPENROUTER_API_KEY`, a Codespaces secret declared in the devcontainer | Keeps the key out of the repo |
 | 2026-11-20 | ConceptExpansion's requirements 3, 15, and 21 updated to match llmemo ([ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2)) | Its checklist should agree with the package |
 | 2026-11-20 | Build llmemo rather than adopt an existing tool | No library or tool researched meets the core requirements: committed and mergeable files, caller-defined keys, a cross-language hash, and `claude -p` support ([docs/prior-art.md](docs/prior-art.md#existing-solutions)) |
+| 2026-11-20 | Format version 1 is specified in [spec/format.md](spec/format.md). Canonical JSON is RFC 8785. The key envelope is `{keyFormat, attempt, label?, variant?, request}`, and file member names are camelCase | RFC 8785 is what JavaScript does already (Threshold's `canonicalJson` matches it). camelCase matches Threshold's entries and JavaScript |
+| 2026-11-20 | A number whose value is an integer above 2^53 − 1 is rejected, even a float such as `1e16`. NaN, infinities, `-0`, and lone surrogates are rejected too | JavaScript can't tell `1e16` from an integer, so this is the only rule both languages can apply identically |
+| 2026-11-20 | Absent and `null` differ. A member is absent only when it isn't there, and Python `None` is `null` | Callers build plain dicts, so no special "absent" value is needed. Closes the question in [docs/cross-language.md](docs/cross-language.md) |
+| 2026-11-20 | Strings are stored as text when they contain a line feed or exceed 512 UTF-8 bytes. References look like `{"$llmemo.text": "<sha256>"}`, and caller member names starting with `$…llmemo` get an extra `$` in files | Bytes count the same in every language. Escaping means no caller data is ever refused, and `$schema`/`$ref` are left alone |
+| 2026-11-20 | Each entry stores `contentSha256` of its stored reply. A damaged entry is an error (with a fixed code), never a miss | Hand edits to replies are detected, as edited keys are (K10). Treating damage as a miss would hide it |
+| 2026-11-20 | Files are published by hard link, with no fallback. Locks are refreshed every 10 s by a timer and taken over after 60 s by renaming | A fallback would let readers see half-written files. A timer keeps long `claude -p` calls from looking abandoned, whatever the backend's timeout |
+| 2026-11-20 | Vectors are generated by a Python reference (`spec/tools/`) and checked by an independent JavaScript implementation | Two implementations written from the spec catch places where the spec is ambiguous |
 
 ## Open questions
 
@@ -342,14 +351,15 @@ None right now.
 
 ## Next steps
 
-1. **Write the format spec** in `spec/` (X1): key structure, canonicalization, hashing,
-   entry schema, layout, stored text and vectors, and versions. Add test vectors (X2). Use the "Ideas to borrow" list in
-   [docs/prior-art.md](docs/prior-art.md#ideas-to-borrow).
-2. **Set up the Python package** in `python/`: MIT `LICENSE`, `pyproject.toml`, and
+1. **Set up the Python package** in `python/`: MIT `LICENSE`, `pyproject.toml`, and
    tooling (the owner's other Python projects use uv, ruff, mypy in strict mode, and
    pytest). Update the devcontainer's `postCreateCommand`, which installs from the repo
-   root.
-3. **Build the core:** hashing, file and memory stores, `call()` (sync and async), both
-   modes, stats, atomic writes, locking, and the spending limit.
-4. **Hand off to ConceptExpansion** for its harness phase 1 (after
+   root. Add a CI job that runs `python spec/tools/generate_vectors.py` (checking that
+   nothing changes) and `node spec/tools/check_vectors.mjs`.
+2. **Build the core** to [spec/format.md](spec/format.md): canonical JSON and hashing,
+   the stored form (text, vectors, escaping), file and memory stores, `call()` (sync and
+   async), both modes, stats, atomic writes, locking, and the spending limit. Its tests
+   must run every case in [spec/vectors/](spec/vectors/README.md). Don't import
+   `spec/tools/reference.py`; it's a test oracle.
+3. **Hand off to ConceptExpansion** for its harness phase 1 (after
    [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).

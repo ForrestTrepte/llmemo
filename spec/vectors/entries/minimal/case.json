@@ -1,0 +1,17 @@
+{
+  "name": "minimal",
+  "description": "A short text reply and only the required metadata.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "reply": "Hi!",
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+  "expectedReply": "Hi!"
+}

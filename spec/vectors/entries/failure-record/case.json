@@ -1,0 +1,26 @@
+{
+  "name": "failure-record",
+  "description": "A failure saved for diagnosis (§5.3). It isn't at the entry's path, so a lookup misses. The multi-line message goes to a .txt file.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "prompt": "Say hi."
+    }
+  },
+  "error": {
+    "kind": "http",
+    "message": "503 Service Unavailable\nupstream overloaded",
+    "httpStatus": 503
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.123Z",
+    "latencyMs": 812
+  },
+  "failureId": "20261120T221500123Z-1a2b3c4d",
+  "id": "5babf102bc76c2b17acd8bf223467724b9d9e313060a839e8cc379cc616ca222",
+  "expectedError": {
+    "httpStatus": 503,
+    "kind": "http",
+    "message": "503 Service Unavailable\nupstream overloaded"
+  }
+}

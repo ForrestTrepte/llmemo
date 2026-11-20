@@ -5,7 +5,8 @@ other's entries (README requirements X1–X4, K1, S1). This doc lists where the 
 languages disagree by default, and how the format avoids those differences. Back to the
 [README](../README.md).
 
-This doc is input to the format spec (README Next steps), not the spec itself.
+This doc was the input to the format spec. The spec itself is
+[spec/format.md](../spec/format.md), and where the two differ, the spec wins.
 
 ## Python and JavaScript disagree by default
 
@@ -43,7 +44,8 @@ explicit.
   and maintenance haven't been checked yet. A small implementation of our own,
   tested against the shared vectors, is also fine.
 - **Key values are restricted** to strings, booleans, null, arrays, objects with string
-  keys, and numbers. Integers must be within ±(2^53 − 1). `NaN`, `Infinity`, `-0`, and
+  keys, and numbers. A number whose value is an integer must be within ±(2^53 − 1), and
+  that includes floats such as `1e16`, since JavaScript can't tell them apart. `NaN`, `Infinity`, `-0`, and
   lone surrogates are rejected with an error, not converted. Callers convert enums,
   decimals, and model objects to plain JSON themselves (e.g. pydantic's
   `model_dump(mode="json")`). Rejecting these keeps conversions from happening silently.
@@ -53,9 +55,9 @@ explicit.
   digits. Python uses `hashlib`. TypeScript uses Web Crypto (`crypto.subtle.digest`), which
   works in both Node and the browser but is async.
 - **Absent and null are different.** To support K8 (keys can gain fields), an absent field
-  is left out of the canonical form, while `null` is kept. The Python API needs a clear
-  way to say "absent" that isn't `None`, or a rule that `None` means absent. This is
-  still open.
+  is left out of the canonical form, while `null` is kept. Settled in the spec (§1): a
+  member is absent only when it isn't in the dict, and Python `None` is `null`. In
+  TypeScript, a member whose value is `undefined` is absent.
 - **Timestamps** are UTC ISO 8601 with exactly 3 fractional digits and `Z`, as
   `toISOString()` produces. Timestamps appear only in metadata, never in keys.
 - **Durations and costs** are stored as plain numbers: latency in integer milliseconds,
@@ -70,7 +72,12 @@ explicit.
   in git. The proposed format: JCS key order and number formatting, 2-space indentation,
   `\n` line endings, and a trailing newline. Python's `json.dumps(indent=2)` and
   `JSON.stringify(x, null, 2)` already agree on indentation and empty containers. They
-  differ on numbers and escaping, so the Python writer needs its own serializer.
+  differ on numbers and escaping, so the Python writer needs its own serializer. The
+  TypeScript writer needs one too: JavaScript objects iterate integer-like member names
+  (`"2"`, `"10"`) first, whatever order they were added in, so `JSON.stringify` of a
+  sorted copy isn't sorted.
+- `JSON.parse` keeps the last of two duplicate member names without an error, so a
+  TypeScript reader needs its own small parser to reject them (spec §6.2).
 - Strings inside JSON escape newlines as `\n`, so converting line endings (Windows
   `autocrlf`) changes only the whitespace between tokens. Parsing is unaffected, and hashes
   don't depend on the file's bytes. The repo should still set `* text=auto eol=lf` in
@@ -99,15 +106,14 @@ named by its SHA-256 and checked when read.
   existing file silently, which breaks S7. On Windows `os.rename` fails if the target
   exists, so behavior would differ between platforms.
 - Hard links work on ext4, APFS, and NTFS. Some file systems don't support them (FAT,
-  some network mounts). The spec should either require hard links or define a fallback
-  and say what it gives up.
+  some network mounts). The spec requires them and defines no fallback (§7.2).
 - Within one process, waiting on an in-memory "in flight" map stops coroutines and
   threads that need the same entry from paying twice. Across processes, lock files do
   the same (S6). Threshold implements both.
 
 ## Shared test vectors (X2)
 
-Planned in `spec/vectors/`, used by both test suites:
+Now in [spec/vectors/](../spec/vectors/README.md), as planned here:
 
 - **Keys:** pairs of a key and its canonical JSON plus hash. They include awkward cases:
   floats (`1.0`, `1e16`, `1e-7`, `0.1 + 0.2`), non-ASCII text, characters outside the

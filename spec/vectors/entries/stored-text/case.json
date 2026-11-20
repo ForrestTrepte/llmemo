@@ -1,0 +1,31 @@
+{
+  "name": "stored-text",
+  "description": "Strings with a newline or over 512 UTF-8 bytes go to .txt files. The system prompt appears in both the key and the reply but is stored once. 256 × é is exactly 512 bytes and stays inline; one more byte moves it to a file.",
+  "key": {
+    "attempt": 0,
+    "label": "clue-giver",
+    "request": {
+      "system": "You are the clue-giver in a game of Concept.\nPlace icons on the board to suggest the prompt.\nNever write words or letters.\n",
+      "prompt": "Prompt: Lighthouse",
+      "reference": "Reference: the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; the board has icons for colors, shapes, and objects; "
+    }
+  },
+  "reply": {
+    "echo": "You are the clue-giver in a game of Concept.\nPlace icons on the board to suggest the prompt.\nNever write words or letters.\n",
+    "text": "Placements:\nA1 (light)\nC4 (sea)\n",
+    "inline-512-bytes": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+    "stored-513-bytes": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééa",
+    "short": "fine"
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "f5232c3c0f40f898fe6ad6202674a922ae7e8add45740a8cf6123a65078a679e",
+  "expectedReply": {
+    "echo": "You are the clue-giver in a game of Concept.\nPlace icons on the board to suggest the prompt.\nNever write words or letters.\n",
+    "inline-512-bytes": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+    "short": "fine",
+    "stored-513-bytes": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééa",
+    "text": "Placements:\nA1 (light)\nC4 (sea)\n"
+  }
+}

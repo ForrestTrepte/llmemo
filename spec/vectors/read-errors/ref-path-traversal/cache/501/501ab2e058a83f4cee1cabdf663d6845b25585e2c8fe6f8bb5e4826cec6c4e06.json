@@ -1,0 +1,18 @@
+{
+  "contentSha256": "2e5ade7a7fbcdb3c72091fa8beeb751f994c7fe51db65eed7ce922d7f6d4d0e9",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "$llmemo.text": "../../../../etc/passwd"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "no-marker",
+  "description": "The folder has no llmemo.json.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "id": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+  "expectedErrorCode": "not-a-cache"
+}

@@ -1,0 +1,23 @@
+{
+  "contentSha256": "767b85cdbeae6a1a7366f30d3996fee0bc362f63e7051f94e92032e455148cbb",
+  "entryFormat": 1,
+  "error": {
+    "details": {
+      "timeoutS": 120
+    },
+    "kind": "timeout",
+    "message": "No reply within 120 s"
+  },
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "slow",
+    "request": {
+      "prompt": "Write a very long story."
+    }
+  },
+  "meta": {
+    "latencyMs": 120000,
+    "recordedAt": "2026-11-20T22:17:00.500Z"
+  }
+}

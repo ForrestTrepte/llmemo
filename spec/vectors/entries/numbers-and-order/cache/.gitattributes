@@ -1,0 +1,5 @@
+# Written by llmemo. Stored text keeps its exact bytes.
+*.txt -text
+*.f32 binary
+*.f64 binary
+*.json text eol=lf

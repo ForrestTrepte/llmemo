@@ -1,0 +1,16 @@
+{
+  "name": "crlf-and-layout",
+  "description": "Readers parse entries; they don't compare bytes (§6.2). This file has CRLF line endings, 4-space indentation, and members out of order.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "id": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+  "expectedReply": {
+    "text": "Hi!",
+    "n": 1
+  }
+}

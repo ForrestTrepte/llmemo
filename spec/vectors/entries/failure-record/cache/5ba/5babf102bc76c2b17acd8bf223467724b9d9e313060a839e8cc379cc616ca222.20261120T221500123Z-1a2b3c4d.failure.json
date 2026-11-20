@@ -1,0 +1,22 @@
+{
+  "contentSha256": "aa4c3d1778839bf412d2f403a0d6e45096b30e64945a42b68611ae9acfcc4d8f",
+  "entryFormat": 1,
+  "error": {
+    "httpStatus": 503,
+    "kind": "http",
+    "message": {
+      "$llmemo.text": "f5fc05459935ad9358a65086bf2dee800c09a2716b0cd71a71d407b3d8adaf94"
+    }
+  },
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "prompt": "Say hi."
+    }
+  },
+  "meta": {
+    "latencyMs": 812,
+    "recordedAt": "2026-11-20T22:15:00.123Z"
+  }
+}

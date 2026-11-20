@@ -1,0 +1,30 @@
+{
+  "name": "text-bytes",
+  "description": "Text files keep exact bytes: CRLF line endings, a leading byte order mark, a NUL, characters outside the BMP, and no added final newline.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "prompt": "Edge cases"
+    }
+  },
+  "reply": [
+    "line 1\r\nline 2\r\n",
+    "﻿starts with a BOM\n",
+    "a\u0000\nb",
+    "😀\nﬀ",
+    "no final newline\nhere",
+    "\n"
+  ],
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "e521d70daba10fa22e4a65fd402093af7002355494bee3bf5f171427d8d45555",
+  "expectedReply": [
+    "line 1\r\nline 2\r\n",
+    "﻿starts with a BOM\n",
+    "a\u0000\nb",
+    "😀\nﬀ",
+    "no final newline\nhere",
+    "\n"
+  ]
+}

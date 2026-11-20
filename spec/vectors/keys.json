@@ -1,0 +1,246 @@
+[
+  {
+    "name": "minimal",
+    "description": "No label or variant. These two are absent, so they don't appear in the canonical form.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "model": "anthropic/claude-haiku-4.5",
+        "prompt": "Say hi."
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"model\":\"anthropic/claude-haiku-4.5\",\"prompt\":\"Say hi.\"}}",
+    "sha256": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06"
+  },
+  {
+    "name": "label-and-variant",
+    "description": "All envelope members present.",
+    "input": {
+      "label": "clue-giver",
+      "variant": "trial-3",
+      "attempt": 2,
+      "request": {
+        "backend": "claude-cli",
+        "model": "claude-haiku-4-5-20251001",
+        "prompt": "Prompt: Lighthouse"
+      }
+    },
+    "canonical": "{\"attempt\":2,\"keyFormat\":1,\"label\":\"clue-giver\",\"request\":{\"backend\":\"claude-cli\",\"model\":\"claude-haiku-4-5-20251001\",\"prompt\":\"Prompt: Lighthouse\"},\"variant\":\"trial-3\"}",
+    "sha256": "356e97c637c04869586cbbcb9ee46d89ee3ceb19b112282f6b31ba904bae613a"
+  },
+  {
+    "name": "request-is-a-string",
+    "description": "The request may be any JSON value.",
+    "input": {
+      "attempt": 0,
+      "request": "Say hi."
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":\"Say hi.\"}",
+    "sha256": "947083e279111399c6cbae154a9be1156fb5d568dc1c7e4f399af3ed953b7be2"
+  },
+  {
+    "name": "request-is-null",
+    "description": "The request may be null.",
+    "input": {
+      "attempt": 0,
+      "request": null
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":null}",
+    "sha256": "6bb9f7f991bb8a33465ee8f8ae1930c9bef8165382cdbeb2a491b382f35b057f"
+  },
+  {
+    "name": "numbers",
+    "description": "ECMAScript number formatting. 1.0 is written 1, 1e-07 is written 1e-7, and 1e-06 is written 0.000001.",
+    "input": {
+      "attempt": 0,
+      "request": [
+        0,
+        1,
+        -1,
+        1.0,
+        -1.5,
+        0.5,
+        0.1,
+        0.30000000000000004,
+        100,
+        100.0,
+        1e-06,
+        1e-07,
+        1.5e-05,
+        123456789.125,
+        9007199254740991,
+        -9007199254740991,
+        9007199254740990.0,
+        4503599627370495.5,
+        5e-324,
+        2.2250738585072014e-308,
+        1.7976931348623157e-300
+      ]
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":[0,1,-1,1,-1.5,0.5,0.1,0.30000000000000004,100,100,0.000001,1e-7,0.000015,123456789.125,9007199254740991,-9007199254740991,9007199254740990,4503599627370495.5,5e-324,2.2250738585072014e-308,1.7976931348623157e-300]}",
+    "sha256": "9e7522f53efd1a2335d3a3cb8b6aa8d5ce45100390569bac80d36807fdab6e76"
+  },
+  {
+    "name": "strings",
+    "description": "Only quote, backslash, and characters below U+0020 are escaped. Slash, U+007F, U+2028, and non-ASCII characters are written as UTF-8.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "ascii": "Hello, world",
+        "controls": "\u0000\u0001\b\t\n\u000b\f\r\u001e\u001f",
+        "quote-backslash": "\"\\",
+        "slash-del": "/",
+        "separators": "  ",
+        "non-ascii": "café 日本 😀 ﬀ",
+        "bom": "﻿start",
+        "empty": ""
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"ascii\":\"Hello, world\",\"bom\":\"﻿start\",\"controls\":\"\\u0000\\u0001\\b\\t\\n\\u000b\\f\\r\\u001e\\u001f\",\"empty\":\"\",\"non-ascii\":\"café 日本 😀 ﬀ\",\"quote-backslash\":\"\\\"\\\\\",\"separators\":\"  \",\"slash-del\":\"/\"}}",
+    "sha256": "fe18cb8ee5f364921cb56d9505224d1dcfc3c7b7e5183281c91583c1539c1a62"
+  },
+  {
+    "name": "member-order",
+    "description": "Member names sort by UTF-16 code units. 😀 (D83D DE00) sorts before ﬀ (U+FB00), unlike code-point order. Integer-like names sort as strings: \"10\" before \"2\".",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "b": 1,
+        "a": 2,
+        "aa": 3,
+        "B": 4,
+        "": 5,
+        "é": 6,
+        "ﬀ": 7,
+        "😀": 8,
+        "10": 9,
+        "2": 10,
+        "": 11
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"\":5,\"10\":9,\"2\":10,\"B\":4,\"a\":2,\"aa\":3,\"b\":1,\"\":11,\"é\":6,\"😀\":8,\"ﬀ\":7}}",
+    "sha256": "a70bd920c2b7c7c09f7acbe9e09ab0eb0429e31729af25dca03d7a4655578ee1"
+  },
+  {
+    "name": "nesting-and-empties",
+    "description": "Empty and nested containers, and literals.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "o": {},
+        "a": [],
+        "aa": [
+          []
+        ],
+        "ao": [
+          {}
+        ],
+        "lit": [
+          true,
+          false,
+          null
+        ],
+        "deep": {
+          "x": {
+            "y": {
+              "z": [
+                1,
+                [
+                  2,
+                  [
+                    3
+                  ]
+                ]
+              ]
+            }
+          }
+        }
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"a\":[],\"aa\":[[]],\"ao\":[{}],\"deep\":{\"x\":{\"y\":{\"z\":[1,[2,[3]]]}}},\"lit\":[true,false,null],\"o\":{}}}",
+    "sha256": "72af3d251cf9965675c6d1ebaf9f190735ade62987bc2e467fb411945a51fad0"
+  },
+  {
+    "name": "absent-field",
+    "description": "Compare with present-null: an absent member and a null member give different IDs (K8).",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "model": "m",
+        "prompt": "p"
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"model\":\"m\",\"prompt\":\"p\"}}",
+    "sha256": "70f548eb9c7014afb9e7f899b7bcb92abac820a51d27a785cfe81580cbefcaee"
+  },
+  {
+    "name": "present-null",
+    "description": "Compare with absent-field.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "model": "m",
+        "prompt": "p",
+        "seed": null
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"model\":\"m\",\"prompt\":\"p\",\"seed\":null}}",
+    "sha256": "3e969f4bea3f95a71008a0d141aad0bd3eced24309e59318d419f59556c8c33a"
+  },
+  {
+    "name": "reserved-member-names",
+    "description": "Names that need escaping in entry files (§4.3) are hashed as they are. Escaping is part of the stored form only.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "$llmemo.text": "not a reference",
+        "$$llmemo": 1,
+        "$schema": "x",
+        "$ref": "#/y"
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"$$llmemo\":1,\"$llmemo.text\":\"not a reference\",\"$ref\":\"#/y\",\"$schema\":\"x\"}}",
+    "sha256": "2f054dfe43159bc180adbc59797b72554f12095969718e81c1ed86e75fbf7648"
+  },
+  {
+    "name": "long-text",
+    "description": "The ID covers the full text, however it's stored.",
+    "input": {
+      "attempt": 0,
+      "label": "clue-giver",
+      "request": {
+        "system": "You are the clue-giver in a game of Concept.\nPlace icons on the board to suggest the prompt.\nNever write words or letters.\n",
+        "prompt": "Prompt: Lighthouse"
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"label\":\"clue-giver\",\"request\":{\"prompt\":\"Prompt: Lighthouse\",\"system\":\"You are the clue-giver in a game of Concept.\\nPlace icons on the board to suggest the prompt.\\nNever write words or letters.\\n\"}}",
+    "sha256": "a52003b6da83132b44eeb3b8e644d7eb3f4d6c99006ce0b062825c6004fbba51"
+  },
+  {
+    "name": "attachment",
+    "description": "The recommended attachment form (§3.3): the SHA-256 of the file's bytes, not the bytes.",
+    "input": {
+      "attempt": 0,
+      "request": {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "What is shown?"
+              },
+              {
+                "type": "image",
+                "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+                "mediaType": "image/png"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "canonical": "{\"attempt\":0,\"keyFormat\":1,\"request\":{\"messages\":[{\"content\":[{\"text\":\"What is shown?\",\"type\":\"text\"},{\"mediaType\":\"image/png\",\"sha256\":\"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\",\"type\":\"image\"}],\"role\":\"user\"}]}}",
+    "sha256": "68db4cc5b5958585f16a0dc9dc8abffcc262192bd8d61ae7f3c1cb3d78be9652"
+  }
+]

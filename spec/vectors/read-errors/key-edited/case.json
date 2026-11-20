@@ -1,0 +1,13 @@
+{
+  "name": "key-edited",
+  "description": "The stored key was edited, so it no longer matches the request (K10).",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "id": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+  "expectedErrorCode": "key-mismatch"
+}

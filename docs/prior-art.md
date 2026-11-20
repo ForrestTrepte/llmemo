@@ -195,9 +195,11 @@ repository. Git compresses entries well (about 20× when packed). A flat directo
 GitHub's 1,000-file listing limit, which is why S2 uses folders.
 
 **Retrofitting.** Threshold would use a future TypeScript llmemo package. Its
-`CacheStore` and `LlmClient` already have the right shape. Its `canonicalJson()` (sorted
-keys plus `JSON.stringify`) is probably already equivalent to RFC 8785 for the data it
-hashes (see [cross-language.md](cross-language.md)). The changes would be llmemo's key
+`CacheStore` and `LlmClient` already have the right shape. Its `canonicalJson()` builds
+the string itself from `Object.keys(value).sort()` and `JSON.stringify` of each scalar.
+That matches RFC 8785 for every value llmemo's spec accepts. It doesn't reject what the
+spec rejects (`-0`, large integers, lone surrogates), so llmemo's version adds those
+checks (see [spec/format.md](../spec/format.md) §1–2). The changes would be llmemo's key
 structure, hash-prefix folders, and the shared entry schema. Because the key structure
 changes, its existing entries would be rehashed and moved by a one-off script, or
 re-recorded.

@@ -1,0 +1,77 @@
+{
+  "name": "vector-f32",
+  "description": "Two embeddings stored as float32 on request. Values are rounded to float32 and read back widened, so 0.1 reads back as 0.10000000149011612 (see expectedReply).",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "backend": "openrouter",
+      "model": "openai/text-embedding-3-small",
+      "input": [
+        "sea",
+        "light"
+      ]
+    }
+  },
+  "reply": {
+    "data": [
+      {
+        "index": 0,
+        "embedding": {
+          "$test.vector": {
+            "dtype": "f32",
+            "values": [
+              0.1,
+              -0.25,
+              1e-07,
+              3.141592653589793,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "index": 1,
+        "embedding": {
+          "$test.vector": {
+            "dtype": "f32",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "3bc3ee9f08b71222dad7842bdf032e4fb638e57e533025ae383e75398db24a13",
+  "expectedReply": {
+    "data": [
+      {
+        "embedding": [
+          0.10000000149011612,
+          -0.25,
+          1.0000000116860974e-07,
+          3.1415927410125732,
+          0.5
+        ],
+        "index": 0
+      },
+      {
+        "embedding": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "index": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "contentSha256": "0a773736b6e4281c071bd568560efd6e9b0bd036961fefae1d01e102681b7de5",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "backend": "openrouter",
+      "input": "lighthouse",
+      "model": "openai/text-embedding-3-small"
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "data": [
+      {
+        "embedding": {
+          "$llmemo.f64": "7b3eb434c542409d5fe6507b27ca4c253a9c63cc1d2c0a328a87eae0d8221ab0"
+        },
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 2,
+      "total_tokens": 2
+    }
+  }
+}

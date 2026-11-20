@@ -1,0 +1,44 @@
+{
+  "contentSha256": "785562eb4180eac2be52e6d3e06477b2e713ab326159326993eff93c39de083b",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "prompt": "Return numbers"
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "": "empty name",
+    "10": "ten",
+    "2": "two",
+    "a": [
+      1,
+      0.1,
+      1e-7,
+      0.000015,
+      0.30000000000000004,
+      -0.5,
+      9007199254740991,
+      5e-324
+    ],
+    "b": 1,
+    "nested": {
+      "a": [],
+      "aa": [
+        []
+      ],
+      "lit": [
+        true,
+        false,
+        null
+      ],
+      "o": {}
+    },
+    "😀": "emoji",
+    "ﬀ": "ligature"
+  }
+}

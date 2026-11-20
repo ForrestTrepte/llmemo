@@ -1,0 +1,12 @@
+{
+  "name": "key-text-ref",
+  "description": "A key whose request string is stored as text. The requested key holds the full string, and they match.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "system": "You are the clue-giver in a game of Concept.\nPlace icons on the board to suggest the prompt.\nNever write words or letters.\n"
+    }
+  },
+  "id": "216805ababe38ff30a0cf832fc010b21558ec6ccf8af2ec910dd885a8d26b409",
+  "expectedReply": "Hi!"
+}

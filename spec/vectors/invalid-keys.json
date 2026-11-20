@@ -1,0 +1,124 @@
+[
+  {
+    "name": "attempt-negative",
+    "input": {
+      "attempt": -1,
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "attempt-fraction",
+    "input": {
+      "attempt": 1.5,
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "attempt-boolean",
+    "input": {
+      "attempt": true,
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "attempt-string",
+    "input": {
+      "attempt": "0",
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "attempt-too-large",
+    "input": {
+      "attempt": 9007199254740992,
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "label-empty",
+    "input": {
+      "attempt": 0,
+      "label": "",
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "variant-empty",
+    "input": {
+      "attempt": 0,
+      "variant": "",
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "label-not-string",
+    "input": {
+      "attempt": 0,
+      "label": 3,
+      "request": {}
+    },
+    "error": "invalid-key"
+  },
+  {
+    "name": "nan",
+    "requestJson": "{\"temperature\": NaN}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "infinity",
+    "requestJson": "{\"temperature\": Infinity}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "overflow-to-infinity",
+    "requestJson": "{\"temperature\": 1e400}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "negative-zero",
+    "requestJson": "{\"temperature\": -0.0}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "integer-2-pow-53",
+    "requestJson": "{\"seed\": 9007199254740992}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "integer-2-pow-60",
+    "requestJson": "{\"seed\": 1152921504606846976}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "large-float",
+    "requestJson": "{\"x\": 1e16}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "huge-float",
+    "requestJson": "{\"x\": 1.5e300}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "lone-high-surrogate",
+    "requestJson": "{\"prompt\": \"a\\ud800b\"}",
+    "error": "invalid-value"
+  },
+  {
+    "name": "lone-low-surrogate",
+    "requestJson": "[\"\\udc00\"]",
+    "error": "invalid-value"
+  },
+  {
+    "name": "lone-surrogate-in-name",
+    "requestJson": "{\"\\ud83d\": 1}",
+    "error": "invalid-value"
+  }
+]

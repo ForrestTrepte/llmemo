@@ -1,0 +1,26 @@
+{
+  "contentSha256": "8dfc48fdf9abb5039218303687d5742dd874b6930650f6ce0433ca359219c648",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "$$$llmemo": 1,
+      "$$llmemo.text": "not a reference",
+      "$$llmemoX": 2,
+      "$ref": "#/y",
+      "$schema": "x",
+      "llmemo": 3
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "$$llmemo.f64": [
+      1,
+      2
+    ],
+    "x$llmemo": true
+  }
+}

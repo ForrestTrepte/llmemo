@@ -1,0 +1,74 @@
+{
+  "name": "numbers-and-order",
+  "description": "Number formatting and member order in the pretty-printed file. A JavaScript writer can't rely on object insertion order: it would put \"2\" and \"10\" first.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "prompt": "Return numbers"
+    }
+  },
+  "reply": {
+    "b": 1,
+    "a": [
+      1.0,
+      0.1,
+      1e-07,
+      1.5e-05,
+      0.30000000000000004,
+      -0.5,
+      9007199254740991,
+      5e-324
+    ],
+    "10": "ten",
+    "2": "two",
+    "😀": "emoji",
+    "ﬀ": "ligature",
+    "": "empty name",
+    "nested": {
+      "o": {},
+      "a": [],
+      "aa": [
+        []
+      ],
+      "lit": [
+        true,
+        false,
+        null
+      ]
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "c28bd92dc6c06f308a1e24c1d0727baab9742f795b4b97eaf85a09e7ccfab230",
+  "expectedReply": {
+    "": "empty name",
+    "10": "ten",
+    "2": "two",
+    "a": [
+      1,
+      0.1,
+      1e-07,
+      1.5e-05,
+      0.30000000000000004,
+      -0.5,
+      9007199254740991,
+      5e-324
+    ],
+    "b": 1,
+    "nested": {
+      "a": [],
+      "aa": [
+        []
+      ],
+      "lit": [
+        true,
+        false,
+        null
+      ],
+      "o": {}
+    },
+    "😀": "emoji",
+    "ﬀ": "ligature"
+  }
+}

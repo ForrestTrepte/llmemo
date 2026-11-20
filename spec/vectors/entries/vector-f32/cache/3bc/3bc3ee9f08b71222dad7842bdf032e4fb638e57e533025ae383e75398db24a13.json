@@ -1,0 +1,35 @@
+{
+  "contentSha256": "49ca16711c889f3beec5d8026d33092a6e48b9335c0e521bfc64303c3d77b9a0",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "backend": "openrouter",
+      "input": [
+        "sea",
+        "light"
+      ],
+      "model": "openai/text-embedding-3-small"
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": {
+    "data": [
+      {
+        "embedding": {
+          "$llmemo.f32": "8b38dde5178486732adc4b5b89ead39d85283218b9eeb5bce8868cf7afdc6f63"
+        },
+        "index": 0
+      },
+      {
+        "embedding": {
+          "$llmemo.f32": "76cb54bedbda438629b40aa213e8fcdaa3a961e6c305ff2df2b28ab97d143335"
+        },
+        "index": 1
+      }
+    ]
+  }
+}

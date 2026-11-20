@@ -1,0 +1,24 @@
+{
+  "contentSha256": "2ac15ff55332d35a568dfd460abe670f9413730dda88e5a32daf93aae05475c8",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "meta": {
+    "futureField": [
+      1,
+      2
+    ],
+    "recordedAt": "2026-11-20T22:15:00.000Z",
+    "usage": {
+      "futureTokens": 4,
+      "inputTokens": 3
+    }
+  },
+  "reply": "Hi!"
+}

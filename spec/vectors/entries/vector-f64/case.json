@@ -1,0 +1,69 @@
+{
+  "name": "vector-f64",
+  "description": "An embedding stored exactly as little-endian float64 (§4.5). {\"$test.vector\": …} in this file marks the array as a vector; it's test notation, not part of the format.",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "backend": "openrouter",
+      "model": "openai/text-embedding-3-small",
+      "input": "lighthouse"
+    }
+  },
+  "reply": {
+    "object": "list",
+    "data": [
+      {
+        "object": "embedding",
+        "index": 0,
+        "embedding": {
+          "$test.vector": {
+            "dtype": "f64",
+            "values": [
+              0.1,
+              -0.25,
+              1e-07,
+              3.141592653589793,
+              -2.5e-10,
+              0,
+              1,
+              0.30000000000000004
+            ]
+          }
+        }
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "usage": {
+      "prompt_tokens": 2,
+      "total_tokens": 2
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "id": "7800ecc3b3644aae1dc3f94c444612ef154fc18fc71c83bcf533c99b6bd3569d",
+  "expectedReply": {
+    "data": [
+      {
+        "embedding": [
+          0.1,
+          -0.25,
+          1e-07,
+          3.141592653589793,
+          -2.5e-10,
+          0.0,
+          1.0,
+          0.30000000000000004
+        ],
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 2,
+      "total_tokens": 2
+    }
+  }
+}

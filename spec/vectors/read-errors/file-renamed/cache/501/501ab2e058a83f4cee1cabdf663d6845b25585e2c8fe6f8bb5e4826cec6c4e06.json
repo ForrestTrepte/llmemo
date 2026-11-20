@@ -1,0 +1,16 @@
+{
+  "contentSha256": "cc18f7024817da6709339227be05ed9b23745f8ad59e7c6e8ba07a2328af6baf",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say bye."
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:15:00.000Z"
+  },
+  "reply": "Bye!"
+}

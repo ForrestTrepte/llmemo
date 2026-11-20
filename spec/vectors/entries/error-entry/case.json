@@ -1,0 +1,30 @@
+{
+  "name": "error-entry",
+  "description": "A failure saved at the entry's own path, to be replayed on purpose (§5.3). Reading it raises the error.",
+  "key": {
+    "attempt": 0,
+    "label": "slow",
+    "request": {
+      "prompt": "Write a very long story."
+    }
+  },
+  "error": {
+    "kind": "timeout",
+    "message": "No reply within 120 s",
+    "details": {
+      "timeoutS": 120
+    }
+  },
+  "meta": {
+    "recordedAt": "2026-11-20T22:17:00.500Z",
+    "latencyMs": 120000
+  },
+  "id": "077255615956158ab5c9fcc46c5102609a60f7e44004bb59a76a28b0697c3167",
+  "expectedError": {
+    "details": {
+      "timeoutS": 120
+    },
+    "kind": "timeout",
+    "message": "No reply within 120 s"
+  }
+}

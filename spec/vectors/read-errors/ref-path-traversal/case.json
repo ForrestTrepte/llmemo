@@ -1,0 +1,13 @@
+{
+  "name": "ref-path-traversal",
+  "description": "A reference must be 64 lowercase hex digits, so it can't name a file outside the cache (§4.2).",
+  "key": {
+    "attempt": 0,
+    "request": {
+      "model": "anthropic/claude-haiku-4.5",
+      "prompt": "Say hi."
+    }
+  },
+  "id": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+  "expectedErrorCode": "schema"
+}
