@@ -1,0 +1,47 @@
+// Dev container for GitHub Codespaces / VS Code: Python + Claude Code.
+// Reference: https://containers.dev/implementors/json_reference/
+{
+  "name": "llmemo",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  "features": {
+    // Node.js is needed by the Claude Code CLI feature below.
+    "ghcr.io/devcontainers/features/node:1": {},
+    // Puts the `claude` CLI on the PATH for use in the terminal.
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+
+  // Keep Claude Code's login and settings across container rebuilds.
+  "mounts": [
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        }
+      }
+    }
+  },
+
+  // The volume mount is created as root; give it to the vscode user.
+  // Then install the project (with dev extras if defined) once a pyproject.toml exists.
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && python -m pip install --upgrade pip && if [ -f pyproject.toml ]; then pip install -e '.[dev]' || pip install -e .; fi",
+
+  "remoteUser": "vscode"
+}
