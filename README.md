@@ -30,8 +30,9 @@ all share.
 2. **Git-native.** Entries are small text files that are readable in a diff and never
    conflict when branches merge. The cache is meant to be committed.
 3. **Works with any backend.** llmemo wraps any `request -> response` callable: an HTTP
-   SDK, an OpenAI-compatible endpoint such as OpenRouter, or a subprocess such as
-   `claude -p`. It doesn't know about providers.
+   SDK, an OpenAI-compatible endpoint, or a subprocess. It ships two ready-made backends,
+   the Claude CLI (`claude -p`) and OpenRouter (A10). The cache itself doesn't depend on
+   either.
 4. **One format for every language.** The on-disk format is specified independently of
    Python, so a TypeScript package can share caches with the Python one.
 5. **Trustworthy.** Every entry is checked when it is read. Secrets are never stored.
@@ -44,8 +45,9 @@ all share.
 
 - **Semantic or fuzzy matching.** A hit requires exactly the same key. Similar prompts
   don't count.
-- **Provider adapters, prompt templating, and output parsing.** These belong to the
-  caller. llmemo stores the raw reply, and the caller parses and validates it every time.
+- **Prompt templating, output parsing, and adapters for every provider.** llmemo stores
+  the raw reply, and the caller parses and validates it every time. Beyond the two
+  built-in backends (A10), callers write their own callable.
 - **Making keys deterministic.** If the caller builds a request using unseeded randomness
   or unordered iteration, every run misses. llmemo can help explain a miss (T6), but it
   can't prevent one.
@@ -83,8 +85,10 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 - **K2. The caller defines the key.** The caller passes the key as plain JSON data:
   backend, exact model ID (not an alias), system prompt, messages, tools, every setting,
   and the output schema. llmemo doesn't guess at fields. `[CE 2] [T]`
-- **K3. Replicate number** in the key, for independent samples of the same request
-  (WordSpace and SoCloverAI call it a "trial", Threshold a "variant"). `[CE 3] [WS] [SC] [T]`
+- **K3. Variant** in the key: an optional free-form string that separates otherwise
+  identical calls, e.g. `trial-3` for independent samples, or a branch ID when rerolling.
+  WordSpace and SoCloverAI call this a "trial", and Threshold calls it a `variant`.
+  `[CE 3] [WS] [SC] [T]`
 - **K4. Attempt number** in the key, so a run that retried after invalid output replays
   the same sequence of failures and successes. `[CE 4] [T]`
 - **K5. Optional label** (e.g. a prompt ID) in the key. It isn't needed for uniqueness,
@@ -137,12 +141,28 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 - **S3. Never SQLite, pickle, or one big file.** A SQLite database committed with its
   write-ahead-log files can't be merged, and pickle runs code when it is loaded. A single
   JSON file has to be rewritten on every call and conflicts on every merge. `[CE 11] [SC]`
-- **S4. Large repeated inputs are stored once.** System prompts and reference docs are
-  stored by hash and referenced from entries, and pruning removes ones no entry uses.
-  `[CE 12]`
+- **S4. Large text is stored once, with real newlines.** Any string in a key or reply
+  that contains a newline, or is longer than a set number of characters, is stored as a
+  plain `.txt` file named by its SHA-256, in the same 3-hex-digit folders as entries. The
+  entry refers to the file instead of holding the text. The same text is stored only
+  once, wherever it appears, and it's readable in diffs. Details:
+  - The entry hash covers the full text, not the reference. So the rule for which
+    strings move to files can change without invalidating any entries.
+  - Each text file is checked against its hash when read.
+  - Git must not convert the files' line endings, so they are marked `-text` in
+    `.gitattributes`.
+  - Text files are written before their entry. They're named by content, so writing one
+    twice is harmless.
+  - Entries aren't self-contained, which is accepted. Pruning (T3) also removes text
+    files that no entry uses.
+  - There is no automatic sharing of common prefixes. To share a long prefix, callers
+    pass the request as a list of parts (e.g. separate messages), and each part is stored
+    once.
+  `[CE 12] [user]`
 - **S5. Atomic writes.** Each entry is written to a temporary file and then linked into
   place, which fails if the entry already exists. So a reader never sees a partly written
-  entry, and if two writers record the same key, the first one wins. `[CE 13] [T]`
+  entry, and if two writers record the same key, the first one wins. When that happens, a
+  warning names the entry, since someone paid for a duplicate call. `[CE 13] [T] [user]`
 - **S6. No duplicate paid calls.** Parallel threads, coroutines, and processes that need
   the same missing entry wait for one recorder instead of each paying for the call.
   Across processes this uses lock files. A lock that hasn't been refreshed for a set time
@@ -160,19 +180,36 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 - **S11. Any location, several caches.** The cache directory is configurable, and one
   project can use several caches, e.g. a committed cache for completions and a gitignored
   one for bulky embeddings. `[SC]`
+- **S12. Embeddings.** Embedding responses (arrays of floats) are supported from the
+  first release, at SoCloverAI's scale: 60k vectors, which take 2.1 GB as JSON text.
+  Each vector is stored as a little-endian binary file named by its SHA-256, in the same
+  folders as text files (S4), and the entry refers to it. The default is float64
+  (`.f64`, exact, about 2.8× smaller than JSON). float32 (`.f32`, about 5.6× smaller) is
+  used when the caller opts in, or when the provider already returns float32. Large
+  embedding caches are expected to be gitignored (S11). `[SC] [user]`
 
 ### Modes
 
+There is no default mode. The caller must choose one. `[user]`
+
 - **M1. Read-write:** a miss calls the backend and records the result. `[CE 15] [T]`
-- **M2. Cache-only (replay):** a miss raises an error that names the label, replicate,
+- **M2. Cache-only (replay):** a miss raises an error that names the label, variant,
   attempt, and hash, and says how to record the entry. CI and tests use this mode. `[CE 16] [T]`
 - **M3. Refresh** selected entries, chosen by label, tag, or hash, by calling again and
   replacing them. `[CE 17] [T] [WS]`
-- **M4. Dry run:** count misses and estimate their cost without calling. `[CE 18]`
+- ~~**M4. Dry run:** count misses and estimate their cost without calling.~~ `[CE 18]`
+  Withdrawn on 2026-11-20. No project has one. In a multi-step run, every call after the
+  first miss depends on the missing reply, so a dry run can't count them. A
+  `contains(key)` check (A9) covers the simple case.
 - **M5. Configurable from the environment**, so the mode can be switched without code
-  changes (e.g. `LLMEMO_MODE=record`, like Threshold's `LLM_CACHE=record`). `[T]`
-- **M6. (later) Spending limit:** stop calling the backend once a run has spent a set
-  amount, as protection against a runaway retry loop. `[T]`
+  changes (e.g. `LLMEMO_MODE=record`, like Threshold's `LLM_CACHE=record`). This is an
+  override only. It doesn't create a default. `[T]`
+- **M6. Spending limit:** stop calling the backend once a run has spent a set amount, as
+  protection against a runaway retry loop. Each project sets its own limit. llmemo's own
+  tests are capped at $0.10 per run. A Claude subscription run through `claude -p`
+  reports what the call would have cost through the API, not money actually spent, but
+  that figure counts toward the limit, since it's the best available measure of usage.
+  `[T] [user]`
 
 ### API
 
@@ -180,30 +217,47 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
   an HTTP SDK or a subprocess call (ConceptExpansion needs the subprocess case). The
   callable returns the raw reply plus optional usage, cost, and served-model metadata.
   `[CE 19]`
-- **A2. Small API**, e.g. `cache.call(key, fn, replicate=0, attempt=0, tags={...})`.
+- **A2. Small API**, e.g. `cache.call(key, fn, variant=None, attempt=0, tags={...})`.
   `[CE 20]`
 - **A3. Sync and async**, both safe for parallel calls. The sync API must work in Jupyter
   notebooks, where an event loop is already running (WordSpace needed `CompatTaskGroup`
   for this). `[CE 20] [WS]`
-- **A4. Every result says whether it was cached or recorded**, along with its metadata,
-  so callers can add up hits, misses, cached cost, and uncached cost. All three Python
-  projects build these totals by hand. `[WS] [SC] [T]`
+- **A4. Stats.** Every result says whether it was cached or recorded, along with its
+  metadata. The package keeps running totals of hits, misses, cached cost (what replayed
+  calls originally cost), uncached cost (what this run spent), and tokens. The totals can
+  be broken down by label and model, reset, and added together across runs. All three
+  Python projects currently build these totals by hand. `[WS] [SC] [T] [user]`
 - **A5. Hooks:** before and after each recorded call (e.g. a spending ledger or limit),
   and whenever an entry is used (e.g. for run manifests or cost reports). `[T]`
-- **A6. Few dependencies, Python 3.10 or later, MIT-compatible license**, with full type
-  hints that pass a strict type check. `[CE 21] [WS] [SC]`
+- **A6. Few dependencies, Python 3.12 or later, and an MIT license**, with full type
+  hints that pass a strict type check. All three Python users already run 3.12. CE 21
+  asked for 3.10 or later. `[CE 21] [WS] [SC] [user]`
 - **A7. Quiet logging by default**, with an option for one line per hit and per miss.
   `[WS]`
 - **A8. (later) Batches.** Batched requests (e.g. embeddings) can be cached item by item,
   so a growing vocabulary doesn't miss whenever the batch changes. `[SC]`
+- **A9. `contains(key)`** checks whether an entry exists without calling the backend or
+  changing the stats. `[CE 18]`
+- **A10. Two built-in backends**, optional, alongside any callable (A1):
+  - **Claude CLI:** `claude -p` run headless as a subprocess, on the owner's Claude
+    subscription. Recorded with full model IDs. The usage and cost it reports are
+    stored, and the CLI version is stored as metadata outside the key (K6).
+    ConceptExpansion's playtests need this backend.
+  - **OpenRouter:** its chat-completions HTTP API, with the key in an environment
+    variable. This works with any model OpenRouter offers.
+  `[CE 19] [T] [user]`
 
 ### Tools for analysis and maintenance
 
-- **T1. Search entries** by label, tag, or metadata without calling a model. `[CE 22]`
-- **T2. Run manifests** list the entry hashes a run used. `[CE 23] [T]`
-- **T3. Prune** entries and stored inputs that no recent manifest uses. Prune nothing if
-  the run that produced the manifest failed, as Threshold does with `cache:prune`.
-  `[CE 24] [T]`
+- ~~**T1. Search entries** by label, tag, or metadata without calling a model.~~ `[CE 22]`
+  Withdrawn on 2026-11-20. No project searched its cache this way. Iterating over entries,
+  which pruning and verification need anyway, is enough.
+- ~~**T2. Run manifests** list the entry hashes a run used.~~ `[CE 23] [T]` Withdrawn on
+  2026-11-20. The `onEntryUsed` hook (A5) already gives callers the hashes a run used.
+  Threshold writes them to a file this way, so it has no separate manifest format.
+- **T3. Prune** entries and stored text that aren't in a given set of used hashes. The
+  set is collected through the hook (A5) during a full, passing run, as Threshold does
+  with `cache:prune`. `[CE 24] [T]`
 - **T4. Cost and latency report:** what a run (or a set of entries) would have cost, and
   how long it would have taken, without the cache. `[T] [SC] [WS]`
 - **T5. Verify:** every entry parses and matches its hash and key, there are no leftover
@@ -212,8 +266,10 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
   with the same label. `[CE 25]`
 - **T7. (later) Command-line tool** for stats, showing entries, verifying, pruning, and
   migrating. `[CE 26] [T]`
-- **T8. (later) Migrations:** rewrite entries to a new entry format, and import legacy
-  caches (WordSpace `.txt`, Threshold `.json`) when a project moves onto llmemo. `[WS] [T]`
+- ~~**T8. Migrations:** rewrite entries to a new entry format, and import legacy caches
+  when a project moves onto llmemo.~~ `[WS] [T]` Withdrawn on 2026-11-20. A project that
+  adopts llmemo writes its own one-off conversion, or re-records. Entries stay versioned
+  (E3), so a future format change can still be handled.
 - **T9. (later) Maintain failure records:** delete saved failures once the call has
   succeeded, and mark failures that keep happening for replay (WordSpace's
   `maintain_exception_cache`). `[WS]`
@@ -235,7 +291,7 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 ```
 docs/           Human- and agent-facing design docs
 spec/           Language-neutral format spec and test vectors (X1, X2)
-python/         The Python package (or the repo root; see Open questions)
+python/         The Python package
 typescript/     Future TypeScript package
 ```
 
@@ -256,42 +312,42 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-20 | Python package first. ConceptExpansion is the first user | Its simulated-playtesting harness is waiting for a cache |
 | 2026-11-20 | SoCloverAI, Threshold, and WordSpace inform the requirements but aren't changed now. Each should be able to adopt llmemo later | Learn from all their caches without taking on migrations yet |
 | 2026-11-20 | The format is language-neutral, so a TypeScript package in this repo can share it | Threshold is TypeScript, and the same caching approach applies there |
+| 2026-11-20 | No default mode; the caller must choose read-write or cache-only | Neither default is safe for every caller: one spends money unexpectedly, the other fails unexpectedly |
+| 2026-11-20 | The key holds a free-form `variant` string, not an integer replicate | It covers trials and rerolls/branches alike |
+| 2026-11-20 | Long text must be stored with real newlines | Prompts and replies have to be readable in diffs |
+| 2026-11-20 | Embeddings are in scope for the first release | SoCloverAI needs them |
+| 2026-11-20 | The Python package lives in `python/` | Leaves room for `typescript/` and a shared `spec/` |
+| 2026-11-20 | Install from this repo's git URL for now; no PyPI yet | Simplest way to start |
+| 2026-11-20 | Entries go in one level of 3-hex-digit folders (4,096 folders) | About 25 entries per folder at WordSpace's 104k, and under GitHub's 1,000-file listing limit until about 4M entries |
+| 2026-11-20 | MIT license | Matches the owner's other projects |
+| 2026-11-20 | Rate limiting, concurrency limits, and retries are out of scope | They belong in a separate module, not in this project |
+| 2026-11-20 | Research existing solutions before building | Avoid building what already exists |
+| 2026-11-20 | The package's tests make real LLM calls on a small budget, with keys from a Codespaces secret. Mock only what real calls can't produce | Real calls catch problems that mocks hide |
+| 2026-11-20 | Withdrew dry run (M4), search (T1), run manifests (T2), and migrations (T8) | None was used in an existing project, or simpler features cover them (A5, A9). ConceptExpansion's list updated to match ([ConceptExpansion#1](https://github.com/ForrestTrepte/ConceptExpansion/pull/1)) |
+| 2026-11-20 | Python 3.12 or later | Every current Python user runs 3.12 |
+| 2026-11-20 | Strings that contain a newline or are long are stored once by hash as `.txt` files, and entries refer to them. Entries need not be self-contained | One mechanism gives real newlines in diffs and stores repeated text once |
+| 2026-11-20 | No automatic prefix sharing for now. Callers split requests into parts | Automatic sharing makes the stored files depend on recording order, or breaks text into fragments that are hard to read |
+| 2026-11-20 | Built-in backends for the Claude CLI and OpenRouter | ConceptExpansion uses the Claude subscription. OpenRouter covers every other model |
+| 2026-11-20 | llmemo's own tests spend at most $0.10 per run. Other projects set their own limit | Keeps real-call testing cheap |
+| 2026-11-20 | Embedding vectors are stored as binary files, float64 by default and float32 on request. Large embedding caches are gitignored | Measured on SoCloverAI's 1,536-dimension vectors: 34 KB each as JSON, 12 KB as float64 (exact), 6 KB as float32 (rounds every value by about 1 part in 10⁸). gzip saves only about 15% on floats |
+| 2026-11-20 | The OpenRouter key is in `OPENROUTER_API_KEY`, a Codespaces secret declared in the devcontainer | Keeps the key out of the repo |
+| 2026-11-20 | ConceptExpansion's requirements 3, 15, and 21 updated to match llmemo ([ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2)) | Its checklist should agree with the package |
 
 ## Open questions
 
-1. **Default mode.** ConceptExpansion wants read-write by default (CE 15). Threshold
-   defaults to replay-only, so that a plain test run never spends money. Should a default
-   exist at all, or should the caller always choose (with M5 for overrides)?
-2. **Replicate vs. variant.** Is an integer replicate enough (CE 3), or is Threshold's
-   free-form `variant` string also needed (e.g. a branch ID when rerolling a turn)?
-3. **Readable prompts.** JSON turns newlines into `\n`, so long prompts are hard to read
-   in diffs. WordSpace's text format kept real newlines. Would storing large inputs as
-   plain-text files (S4) solve this?
-4. **Embeddings.** Are they in scope for the first release? SoCloverAI's embedding cache
-   holds 60k entries in 2.1 GB, so it may need a compact encoding or a cache that isn't
-   committed (S11).
-5. **Python package location:** the repo root or `python/`? The devcontainer currently
-   runs `pip install -e .` from the root.
-6. **Distribution:** publish to PyPI (the `llmemo` name is unchecked), or install from
-   this repo's git URL?
-7. **Folder depth:** one level of 2-hex-digit folders (256 folders, about 400 entries
-   each at WordSpace's size) or two levels?
-8. **License:** MIT, like the other projects?
-9. **A separate module later** for the rate limiting, concurrency limits, and retry code
-   that each project currently writes for itself?
-10. **Build vs. adopt.** ConceptExpansion says the owner will "find or build" the package.
-    The caches already tried (LangChain's, litellm's, and diskcache) fail S3. Before
-    building, should any other existing library be checked against these requirements?
+None right now.
 
 ## Next steps
 
-1. **The owner reviews the requirements and open questions.** Record answers in Decisions.
+1. **Research existing solutions** against these requirements, especially S1–S6, K1,
+   and A1. Record the findings in `docs/`.
 2. **Write the format spec** in `spec/` (X1): key structure, canonicalization, hashing,
-   entry schema, layout, stored inputs, and versions. Add test vectors (X2).
-3. **Set up the Python package:** license, layout (open question 5), and tooling. The
-   owner's other Python projects use uv, ruff, mypy (strict), and pytest.
-4. **Build the core:** hashing, file and memory stores, `call()` (sync and async), the
-   read-write and replay modes, atomic writes, and locking. Tests use fake callables and
-   never make paid calls.
-5. **Hand off to ConceptExpansion** for its harness phase 1, then add the requirements
-   that phase needs next (dry run, manifests, prune).
+   entry schema, layout, stored text and vectors, and versions. Add test vectors (X2).
+3. **Set up the Python package** in `python/`: MIT `LICENSE`, `pyproject.toml`, and
+   tooling (the owner's other Python projects use uv, ruff, mypy in strict mode, and
+   pytest). Update the devcontainer's `postCreateCommand`, which installs from the repo
+   root.
+4. **Build the core:** hashing, file and memory stores, `call()` (sync and async), both
+   modes, stats, atomic writes, locking, and the spending limit.
+5. **Hand off to ConceptExpansion** for its harness phase 1 (after
+   [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).

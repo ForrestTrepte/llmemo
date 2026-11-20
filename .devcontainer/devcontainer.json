@@ -13,6 +13,15 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
+  // Codespaces prompts for these secrets when a codespace is created.
+  // llmemo's tests use OpenRouter with a per-run budget of $0.10.
+  "secrets": {
+    "OPENROUTER_API_KEY": {
+      "description": "OpenRouter API key, used by llmemo's tests and its OpenRouter backend.",
+      "documentationUrl": "https://openrouter.ai/keys"
+    }
+  },
+
   // Keep Claude Code's login and settings across container rebuilds.
   "mounts": [
     "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"

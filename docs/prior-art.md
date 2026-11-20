@@ -227,6 +227,6 @@ tagged `[CE n]`.
   projects and in Threshold's reporter (A4, T4).
 - **Semaphores, per-provider concurrency limits, and rate-limit retries** appear in
   WordSpace and SoCloverAI, implemented almost identically. They're outside llmemo's
-  scope for now (README Open questions 9).
+  scope, and would go in a separate module (README Decisions).
 - **Jupyter compatibility** matters in WordSpace and SoCloverAI, where a running event
   loop breaks `asyncio.TaskGroup` (A3).

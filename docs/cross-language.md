@@ -79,6 +79,14 @@ explicit.
   (macOS and Windows). A path such as `ab/<64 hex>.json` stays well within Windows'
   path-length limit.
 
+## Binary vectors
+
+Embeddings are stored as binary (README S12), so the byte order is fixed as
+little-endian IEEE 754. Python reads them with `struct` or
+`numpy.frombuffer(..., "<f8")`, and TypeScript with a `DataView` (not a raw
+`Float64Array`, which uses the platform's byte order). Like text files, a vector file is
+named by its SHA-256 and checked when read.
+
 ## Atomic writes and locks
 
 | Need | Python | Node |

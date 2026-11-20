@@ -64,8 +64,12 @@ into a checked-in file.
 
 ## Tests and spending
 
-- Tests never call a paid API. Use fake callables, and the memory store or a temp
-  directory.
+- Prefer real LLM calls to mocks. Use the cheapest model that exercises the code path. A
+  test run may spend at most $0.10, and the spending limit (M6) must always enforce that.
+  OpenRouter's key comes from a Codespaces secret in an environment variable. Claude CLI
+  tests run on the owner's subscription, and its usage limits are shared with interactive
+  use, so keep those calls few and small (e.g. Haiku). Use fakes only for things a real call
+  can't produce on demand, such as a timeout or two writers racing.
 - Never put API keys or other secrets in code, tests, test vectors, or docs.
 
 ## Asking the user
