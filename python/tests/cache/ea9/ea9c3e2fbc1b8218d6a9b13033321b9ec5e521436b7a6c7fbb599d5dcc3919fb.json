@@ -1,5 +1,5 @@
 {
-  "contentSha256": "0f5415703d83e013f49b93541e9b0c4fde73e3b60a29c749613f68961e7e43bd",
+  "contentSha256": "37a4e3c8ceff9d034b0396685325d51d9069a31ab573f047701f10bc21a47232",
   "entryFormat": 1,
   "key": {
     "attempt": 0,
@@ -14,16 +14,21 @@
           "light"
         ],
         "model": "openai/text-embedding-3-small"
-      }
+      },
+      "endpoint": "embeddings"
     }
   },
   "meta": {
     "billing": "api",
     "costUsd": 4e-8,
-    "latencyMs": 361,
-    "recordedAt": "2026-11-21T02:07:36.449Z",
+    "latencyMs": 389,
+    "recordedAt": "2026-11-21T06:21:33.101Z",
     "recordedBy": "llmemo-tests",
-    "servedBy": "OpenAI"
+    "servedBy": "OpenAI",
+    "servedModel": "text-embedding-3-small",
+    "usage": {
+      "inputTokens": 2
+    }
   },
   "reply": {
     "data": [
@@ -42,7 +47,7 @@
         "object": "embedding"
       }
     ],
-    "id": "gen-emb-1795226856-CwyAW9E8e2evreyBcGPT",
+    "id": "gen-emb-1795242092-spPt2OVfmEcHfmb9lVjC",
     "model": "text-embedding-3-small",
     "object": "list",
     "provider": "OpenAI",

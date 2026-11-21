@@ -5,8 +5,9 @@ A record-and-replay cache for LLM calls, stored as plain files that are committe
 **Status (2026-11-21): the core of the Python package is built** to the
 [format spec](spec/README.md): keys and hashing, the stored form, file and memory stores,
 `call()`/`acall()`, record and replay modes, refresh, failures, stats, hooks, locking, and
-the spending limit and spending ledger. It passes every shared test vector. The built-in backends (A10) and
-the maintenance tools (T3–T5) aren't written yet. This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
+the spending limit and spending ledger, and the built-in Claude CLI and OpenRouter
+backends (A10). It passes every shared test vector. The maintenance tools (T3–T5) aren't
+written yet. This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
 user is [ConceptExpansion](https://github.com/ForrestTrepte/ConceptExpansion). A TypeScript
 package that reads and writes the same cache format may follow, in this same repository.
 
@@ -324,9 +325,13 @@ uv run ruff format ..
 
 To regenerate and check the test vectors, see [spec/README.md](spec/README.md).
 
-`tests/test_live.py` makes real OpenRouter calls when `OPENROUTER_API_KEY` is set, and
-records them in the committed cache `python/tests/cache/`. Without the key it replays
-that cache, which is what CI does. Every live call in a run shares one $0.10
+`tests/test_live.py` makes real calls through the built-in backends and records them in the
+committed cache `python/tests/cache/`: OpenRouter calls when `OPENROUTER_API_KEY` is set,
+and Claude CLI calls when `claude` is on the PATH outside CI (one small Haiku call on the
+subscription, plus one with an unknown model, which uses nothing). Otherwise it replays
+that cache, which is what CI does. `tests/test_examples.py` runs each script in
+`python/examples/` in replay mode against its committed cache in `examples/cache/`. After
+changing an example, record its new entries with `LLMEMO_MODE=record` and commit them. Every live call in a run shares one $0.10
 `SpendLimit` (`tests/conftest.py`), and each call they pay for adds a row to this repo's
 ledger in `llm-spend/`. Commit the ledger along with the entries it paid for. To re-record an entry, delete its files and rerun in
 the codespace.
@@ -344,6 +349,8 @@ tab, or with `gh run list` and `gh run view --log-failed`.
 - [spec/format.md](spec/format.md): the cache format, with its
   [test vectors](spec/vectors/README.md). This is the contract between the Python and
   TypeScript packages.
+- [spec/backends.md](spec/backends.md): the requests the built-in backends take and what
+  they store, so both packages make the same keys for them.
 - [docs/prior-art.md](docs/prior-art.md): how each of the owner's projects caches LLM
   calls, what worked, what didn't, and how each could move onto llmemo. It also reviews
   existing libraries and tools (vcrpy, litellm, DSPy, Inspect AI, and others) and what
@@ -406,6 +413,11 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | A `call` row is written for every backend call that reported a cost, including a reply that couldn't be recorded and the loser of a recording race (`duplicate: true`). Hits and calls with no reported cost write nothing | The ledger records money spent, and those calls were paid for |
 | 2026-11-21 | `meta.billing` (`api` or `subscription`) is an optional metadata member, also copied into ledger rows | Reports can total real money separately from a subscription's API-equivalent cost (M6). An optional member needs no format change |
 | 2026-11-21 | `key-total` rows are part of the format now, but only the OpenRouter backend will write them | Only a provider with a spending API can report a key's total |
+| 2026-11-21 | The built-in backends are `ClaudeCli` and `OpenRouter`, exported from `llmemo`. Each instance is a backend callable with an `acall` method for `Cache.acall`, and static methods build requests (`ClaudeCli.request`, `OpenRouter.chat_request`, `OpenRouter.embeddings_request`). Their request shapes are specified in [spec/backends.md](spec/backends.md) | Same shape as any caller-written backend (A1). A written request shape lets a TypeScript package share their entries |
+| 2026-11-21 | A built-in backend rejects request members it doesn't define. The Claude CLI request requires `system` and a full model ID (aliases are rejected). `prompt` and `system` may be lists of strings, which are concatenated | An ignored member would split the cache without changing the call. Without `system`, Claude Code's own prompt would apply and change with CLI versions. Lists let shared parts be stored once (S4) |
+| 2026-11-21 | The Claude CLI backend stores a fixed list of members of the CLI's JSON output (result, structured output, stop reason, usage, and so on), not the whole object | The rest is session IDs, dozens of timings, and the login's credential expiry. A fixed list keeps whatever future CLI versions add out of committed files (E4). This is a narrow reading of E1 / CE 7 |
+| 2026-11-21 | Each `claude -p` call runs in a new empty temp folder, with the system prompt in a file, the prompt on stdin, and `CLAUDECODE` removed from its environment. `billing` is `subscription` unless `ANTHROPIC_API_KEY` is set | No project files or `CLAUDE.md` leak into the call, long prompts aren't limited by the command line, and it runs inside Claude Code too |
+| 2026-11-21 | The OpenRouter backend reads its key when a call is made. A failure's message keeps only the error body's `error.message`, with the key replaced by `[key]` | Replay needs no key. Error bodies also contain the account's user ID |
 
 ## Open questions
 
@@ -413,20 +425,14 @@ None right now.
 
 ## Next steps
 
-1. **Built-in backends (A10)** in the Python package: the Claude CLI (`claude -p` as a
-   subprocess, reporting usage, cost, the full served model ID, and the CLI version as
-   `toolVersion`) and OpenRouter (chat completions and embeddings, key from
-   `OPENROUTER_API_KEY`, raising `BackendError` with no headers in the message). Each
-   sets `Reply.billing` (`subscription` for the CLI, `api` for OpenRouter). The OpenRouter
-   backend also offers a way to append a `key-total` row (spec §10.2) from OpenRouter's
-   key endpoint, e.g. at the start of a recording run.
-   `python/tests/test_live.py` has a minimal OpenRouter helper to start from. Claude CLI
-   tests use the subscription, so keep them to one or two small Haiku calls recorded in
-   `python/tests/cache/`.
-2. **Hand off to ConceptExpansion** for its harness phase 1 (after
-   [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).
-   It needs the Claude CLI backend.
-3. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
-   exists; compare it with the latest `key-total` row to show unseen spending), prune (T3, from hashes collected by `on_entry_used`), a cost
-   and latency report (T4, from `Stats`), and verify (T5, the §8 checks on every file,
-   plus leftover locks and temp files and known secret values).
+1. **Hand off to ConceptExpansion** for its harness phase 1 (after
+   [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is
+   merged). It uses `ClaudeCli` (spec/backends.md §1): pass its large reference docs as
+   separate parts of `system` or `prompt` so each is stored once. Tell it that the CLI
+   backend stores a fixed list of the CLI's output members, not the whole object (its
+   CE 7). Don't edit that repo unless the owner asks.
+2. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
+   exists; compare it with the latest `key-total` row, which `OpenRouter.record_key_total`
+   writes, to show unseen spending), prune (T3, from hashes collected by `on_entry_used`),
+   a cost and latency report (T4, from `Stats`), and verify (T5, the §8 checks on every
+   file, plus leftover locks and temp files and known secret values).

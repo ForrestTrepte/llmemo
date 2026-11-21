@@ -1,0 +1,32 @@
+{
+  "contentSha256": "19f07369bde9e94df70868ce04eaf4ab6c80aeed0cfd83b0b3c4e27287b574a6",
+  "entryFormat": 1,
+  "error": {
+    "httpStatus": 400,
+    "kind": "http",
+    "message": "HTTP 400 from OpenRouter: llmemo/no-such-model is not a valid model ID"
+  },
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "live-http-error",
+    "request": {
+      "backend": "openrouter",
+      "body": {
+        "messages": [
+          {
+            "content": "hi",
+            "role": "user"
+          }
+        ],
+        "model": "llmemo/no-such-model"
+      },
+      "endpoint": "chat/completions"
+    }
+  },
+  "meta": {
+    "latencyMs": 43,
+    "recordedAt": "2026-11-21T06:21:33.166Z",
+    "recordedBy": "llmemo-tests"
+  }
+}
