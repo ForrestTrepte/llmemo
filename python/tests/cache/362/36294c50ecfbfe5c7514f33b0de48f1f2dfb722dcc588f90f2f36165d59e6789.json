@@ -1,0 +1,61 @@
+{
+  "contentSha256": "0f5415703d83e013f49b93541e9b0c4fde73e3b60a29c749613f68961e7e43bd",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "live-embedding",
+    "request": {
+      "backend": "openrouter",
+      "body": {
+        "dimensions": 8,
+        "input": [
+          "sea",
+          "light"
+        ],
+        "model": "openai/text-embedding-3-small"
+      }
+    }
+  },
+  "meta": {
+    "billing": "api",
+    "costUsd": 4e-8,
+    "latencyMs": 361,
+    "recordedAt": "2026-11-21T02:07:36.449Z",
+    "recordedBy": "llmemo-tests",
+    "servedBy": "OpenAI"
+  },
+  "reply": {
+    "data": [
+      {
+        "embedding": {
+          "$llmemo.f64": "ec9164dd2f65f61192cc477dab6dfbdae58360d025edec380b624733870b21f9"
+        },
+        "index": 0,
+        "object": "embedding"
+      },
+      {
+        "embedding": {
+          "$llmemo.f64": "9a79c66f954c52ef5bc225652dd86dc6db449726054937137d17d60317b44ff4"
+        },
+        "index": 1,
+        "object": "embedding"
+      }
+    ],
+    "id": "gen-emb-1795226856-CwyAW9E8e2evreyBcGPT",
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "provider": "OpenAI",
+    "usage": {
+      "cost": 4e-8,
+      "cost_details": {
+        "upstream_inference_completions_cost": 0,
+        "upstream_inference_cost": 4e-8,
+        "upstream_inference_prompt_cost": 4e-8
+      },
+      "is_byok": false,
+      "prompt_tokens": 2,
+      "total_tokens": 2
+    }
+  }
+}

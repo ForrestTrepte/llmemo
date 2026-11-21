@@ -22,6 +22,7 @@ from typing import Any
 KEY_FORMAT = 1
 ENTRY_FORMAT = 1
 LAYOUT_FORMAT = 1
+LEDGER_FORMAT = 1
 
 MAX_SAFE_INTEGER = 2**53 - 1
 TEXT_INLINE_MAX_BYTES = 512  # §4.4
@@ -503,7 +504,7 @@ def check_meta(meta: object) -> None:
         raise FormatError("schema", "meta isn't an object")
     if not isinstance(meta.get("recordedAt"), str) or not TIMESTAMP.fullmatch(meta["recordedAt"]):
         raise FormatError("schema", "meta.recordedAt")
-    for name in ("recordedBy", "servedModel", "servedBy", "toolVersion", "codeVersion"):
+    for name in ("recordedBy", "servedModel", "servedBy", "toolVersion", "codeVersion", "billing"):
         if name in meta and not isinstance(meta[name], str):
             raise FormatError("schema", f"meta.{name}")
     if "latencyMs" in meta:
@@ -619,3 +620,97 @@ def read_entry(
     if not path.is_file():
         return None
     return read_entry_file(root, path, requested, limits)
+
+
+# §10 Spending ledger --------------------------------------------------------------
+
+LEDGER_GITATTRIBUTES = "# Written by llmemo.\n*.jsonl text eol=lf\n"
+_UNSAFE = re.compile(r"[^A-Za-z0-9._-]")
+_ROW_COMMON = {"ledgerFormat": int, "kind": str, "at": str, "by": str}
+_ROW_OPTIONAL_COMMON = {"session": str, "run": str}
+_ROW_KINDS: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {
+    # kind: (required members, optional members), beyond the common ones
+    "call": (
+        {"entryId": str, "attempt": int, "costUsd": float},
+        {
+            "label": str,
+            "variant": str,
+            "model": str,
+            "billing": str,
+            "codeVersion": str,
+            "duplicate": bool,
+        },
+    ),
+    "key-total": (
+        {"provider": str, "usageUsd": float},
+        {"limitUsd": float, "source": str},
+    ),
+}
+
+
+def ledger_part(name: str) -> str:
+    part = _UNSAFE.sub("-", name)
+    return "-" if part.strip(".") == "" else part
+
+
+def ledger_path(branch: str, developer: str) -> str:
+    """The ledger file's path relative to the ledger root (§10.1)."""
+    return "/".join(
+        [*(ledger_part(p) for p in branch.split("/")), ledger_part(developer) + ".jsonl"]
+    )
+
+
+def _member_ok(v: object, t: object) -> bool:
+    if t is float:  # a non-negative number
+        return not isinstance(v, bool) and isinstance(v, (int, float)) and v >= 0
+    if t is int:  # a non-negative integer
+        return not isinstance(v, bool) and isinstance(v, int) and v >= 0
+    if t is bool:
+        return isinstance(v, bool)
+    return isinstance(v, str)
+
+
+def check_row(row: object) -> bool:
+    """Raise unless row is a valid row. Returns False for a kind this reader doesn't know."""
+    if not isinstance(row, dict) or "ledgerFormat" not in row:
+        raise FormatError("schema", "row isn't an object with ledgerFormat")
+    fmt = row["ledgerFormat"]
+    if isinstance(fmt, bool) or fmt != LEDGER_FORMAT:
+        raise FormatError("unsupported-format", f"ledgerFormat {fmt!r}")
+    if row.get("kind") not in _ROW_KINDS:
+        if not isinstance(row.get("kind"), str):
+            raise FormatError("schema", "row kind")
+        return False
+    required, optional = _ROW_KINDS[row["kind"]]
+    for name, t in {**_ROW_COMMON, **required}.items():
+        if name not in row or not _member_ok(row[name], t):
+            raise FormatError("schema", f"row member {name}")
+    for name, t in {**_ROW_OPTIONAL_COMMON, **optional}.items():
+        if name in row and not _member_ok(row[name], t):
+            raise FormatError("schema", f"row member {name}")
+    if not TIMESTAMP.fullmatch(row["at"]):
+        raise FormatError("schema", "row at")
+    if row["kind"] == "call" and not HEX64.fullmatch(row["entryId"]):
+        raise FormatError("schema", "row entryId")
+    return True
+
+
+def ledger_line(row: dict[str, Any]) -> bytes:
+    if not check_row(row):
+        raise ValueError("unknown row kind")
+    return canonical_bytes(row) + b"\n"
+
+
+def parse_ledger(data: bytes) -> list[dict[str, Any]]:
+    """The rows of a ledger file that this reader knows (§10.3)."""
+    rows = []
+    for line in data.split(b"\n"):
+        if line.endswith(b"\r"):
+            line = line[:-1]
+        if not line:
+            continue
+        row = parse_json_file(line)
+        if check_row(row):
+            assert isinstance(row, dict)
+            rows.append(row)
+    return rows

@@ -17,6 +17,7 @@
     "variant": "trial-3"
   },
   "meta": {
+    "billing": "subscription",
     "codeVersion": "5203929-dirty",
     "costUsd": 0.0021,
     "extra": {
