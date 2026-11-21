@@ -177,6 +177,14 @@ def test_record_wont_take_over_a_folder_that_isnt_a_cache(tmp_path: Path) -> Non
     assert e.value.code == "not-a-cache"
 
 
+def test_record_finishes_a_cache_another_process_is_creating(tmp_path: Path) -> None:
+    """A race seen in CI: another process has written .gitattributes but not llmemo.json."""
+    (tmp_path / ".gitattributes").write_bytes(b"# partly created\n")
+    (tmp_path / "llmemo.0123456789abcdef.tmp").write_bytes(b"")
+    assert Cache(tmp_path, mode="record").call(REQUEST, lambda r: "ok").reply == "ok"
+    assert (tmp_path / "llmemo.json").is_file()
+
+
 def test_mode_is_required_and_checked() -> None:
     with pytest.raises(TypeError):
         Cache(MemoryStore())  # type: ignore[call-arg]

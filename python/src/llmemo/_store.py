@@ -11,6 +11,7 @@ import contextlib
 import errno
 import logging
 import os
+import re
 import secrets
 import socket
 import threading
@@ -163,7 +164,10 @@ class FileStore:
     def open(self, create: bool) -> None:
         marker = self.root / "llmemo.json"
         if not marker.exists() and create:
-            if self.root.exists() and any(self.root.iterdir()):
+            # Files another process may have written while creating this cache at the same
+            # time. Every step below succeeds if its file exists, so finishing is safe.
+            others = [p.name for p in self.root.iterdir()] if self.root.exists() else []
+            if any(not _creating.fullmatch(name) for name in others):
                 raise FormatError(
                     "not-a-cache",
                     f"{self.root} isn't empty and has no llmemo.json, so llmemo won't write there",
@@ -354,6 +358,9 @@ class FileStore:
                     path.unlink()
                     removed += 1
         return removed
+
+
+_creating = re.compile(r"\.gitattributes|\.gitignore|llmemo\.json|llmemo\.[0-9a-f]{16}\.tmp")
 
 
 def _read_limited(path: Path, limit: int) -> bytes:
