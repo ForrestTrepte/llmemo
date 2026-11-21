@@ -25,7 +25,7 @@ build-backend = "uv_build"
 [tool.mypy]
 # A6: strict. The spec tools are checked too, since the vectors depend on them.
 strict = true
-files = ["src", "tests", "../spec/tools"]
+files = ["src", "tests", "examples", "../spec/tools"]
 python_version = "3.12"
 
 [tool.pytest.ini_options]

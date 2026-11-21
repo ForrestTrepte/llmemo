@@ -11,6 +11,17 @@ Install from git (there's no PyPI release yet):
 uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo#subdirectory=python"
 ```
 
+Two backends are built in: `ClaudeCli` (`claude -p` on a Claude subscription) and
+`OpenRouter`. [examples/quickstart.py](examples/quickstart.py) sets up a cache and makes
+one call through each. It runs with no key or login, because its calls are already
+recorded in `examples/cache/`:
+
+```
+uv run python examples/quickstart.py
+```
+
+Any other backend is a callable you write:
+
 ```python
 from llmemo import Cache, Reply, Usage
 
@@ -22,7 +33,7 @@ def backend(request):  # any request -> reply callable: an SDK, HTTP, or a subpr
 
 cache = Cache("sim/cache", mode="record")  # or "replay"; LLMEMO_MODE overrides it
 result = cache.call(
-    {"backend": "claude-cli", "model": "claude-haiku-4-5-20251001", "prompt": "Say hi."},
+    {"backend": "my-backend", "model": "my-model-2026-11-01", "prompt": "Say hi."},
     backend,
     label="greeting",
     variant="trial-1",

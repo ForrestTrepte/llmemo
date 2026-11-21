@@ -7,6 +7,8 @@ vectors.
 - [format.md](format.md): the format spec, covering keys, canonical JSON, hashing,
   entries, stored text and vectors, directory layout, atomic writes and locks, reading,
   error codes, and versions.
+- [backends.md](backends.md): the requests the built-in backends (Claude CLI and
+  OpenRouter) take, and what they store, so every package makes the same keys for them.
 - [vectors/](vectors/README.md): shared test vectors, as key/hash pairs, complete cache
   trees a writer must produce byte for byte, and damaged caches a reader must reject.
 - [tools/](tools/): `reference.py` and `generate_vectors.py` (Python, standard library

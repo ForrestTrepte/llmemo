@@ -1,0 +1,86 @@
+{
+  "contentSha256": "9e29c96e2baf98562c58fd84180cd624a3908c33d3fe3a6207e3c95552a13be1",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "live-chat",
+    "request": {
+      "backend": "openrouter",
+      "body": {
+        "max_tokens": 5,
+        "messages": [
+          {
+            "content": "Reply with the single word: hi",
+            "role": "user"
+          }
+        ],
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "temperature": 0
+      },
+      "endpoint": "chat/completions"
+    }
+  },
+  "meta": {
+    "billing": "api",
+    "costUsd": 0.00000226,
+    "latencyMs": 241,
+    "recordedAt": "2026-11-21T06:21:32.705Z",
+    "recordedBy": "llmemo-tests",
+    "servedBy": "Groq",
+    "servedModel": "meta-llama/llama-3.1-8b-instruct",
+    "usage": {
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "inputTokens": 42,
+      "outputTokens": 2,
+      "reasoningTokens": 0
+    }
+  },
+  "reply": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "hi",
+          "reasoning": null,
+          "refusal": null,
+          "role": "assistant"
+        },
+        "native_finish_reason": "stop"
+      }
+    ],
+    "created": 1795242092,
+    "id": "gen-1795242092-flxENXEN726XbEiWkzuI",
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "object": "chat.completion",
+    "provider": "Groq",
+    "service_tier": "flex",
+    "system_fingerprint": "fp_020e283281",
+    "usage": {
+      "completion_tokens": 2,
+      "completion_tokens_details": {
+        "audio_tokens": 0,
+        "image_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "cost": 0.00000226,
+      "cost_details": {
+        "upstream_inference_completions_cost": 1.6e-7,
+        "upstream_inference_cost": 0.00000226,
+        "upstream_inference_prompt_cost": 0.0000021
+      },
+      "is_byok": false,
+      "prompt_tokens": 42,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cache_write_tokens": 0,
+        "cached_tokens": 0,
+        "video_tokens": 0
+      },
+      "total_tokens": 44
+    }
+  }
+}

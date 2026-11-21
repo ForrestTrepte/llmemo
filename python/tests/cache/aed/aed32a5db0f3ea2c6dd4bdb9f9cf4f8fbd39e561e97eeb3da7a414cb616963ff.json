@@ -1,0 +1,26 @@
+{
+  "contentSha256": "508ad678d0e936cf129e4aa6721fd6a82d72bff9d42e4f979333c4ae16e8910d",
+  "entryFormat": 1,
+  "error": {
+    "exitCode": 1,
+    "httpStatus": 404,
+    "kind": "http",
+    "message": "There's an issue with the selected model (claude-llmemo-no-such-model). It may not exist or you may not have access to it."
+  },
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "live-claude-error",
+    "request": {
+      "backend": "claude-cli",
+      "model": "claude-llmemo-no-such-model",
+      "prompt": "hi",
+      "system": ""
+    }
+  },
+  "meta": {
+    "latencyMs": 1479,
+    "recordedAt": "2026-11-21T06:21:36.591Z",
+    "recordedBy": "llmemo-tests"
+  }
+}
