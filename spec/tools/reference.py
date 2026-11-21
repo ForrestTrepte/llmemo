@@ -134,11 +134,25 @@ def format_number(x: int | float) -> str:
         s = "0." + "0" * (-n) + digits
     else:
         e = n - 1
-        s = digits[0] + ("." + digits[1:] if k > 1 else "") + "e" + ("+" if e >= 0 else "-") + str(abs(e))
+        s = (
+            digits[0]
+            + ("." + digits[1:] if k > 1 else "")
+            + "e"
+            + ("+" if e >= 0 else "-")
+            + str(abs(e))
+        )
     return sign + s
 
 
-_SHORT_ESCAPES = {'"': '\\"', "\\": "\\\\", "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}
+_SHORT_ESCAPES = {
+    '"': '\\"',
+    "\\": "\\\\",
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+}
 
 
 def format_string(s: str) -> str:
@@ -334,7 +348,10 @@ def from_stored(v: object, where: str, root: Path | None, limits: Limits) -> obj
         if root is None:
             return v
         return decode_blob(read_blob(root, h, ext, limits), ext)
-    return {(k[1:] if ESCAPED.match(k) else k): from_stored(item, where, root, limits) for k, item in v.items()}
+    return {
+        (k[1:] if ESCAPED.match(k) else k): from_stored(item, where, root, limits)
+        for k, item in v.items()
+    }
 
 
 # §6 Writing files -----------------------------------------------------------------
@@ -368,11 +385,18 @@ def init_cache(root: Path) -> None:
 
 
 def build_entry(
-    env: dict[str, Any], meta: dict[str, Any], reply: object = None, error: dict[str, Any] | None = None
+    env: dict[str, Any],
+    meta: dict[str, Any],
+    reply: object = None,
+    error: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, bytes]]:
     """The stored entry object and the files it refers to."""
     blobs: dict[str, bytes] = {}
-    entry: dict[str, Any] = {"entryFormat": ENTRY_FORMAT, "key": to_stored(env, blobs, False), "meta": meta}
+    entry: dict[str, Any] = {
+        "entryFormat": ENTRY_FORMAT,
+        "key": to_stored(env, blobs, False),
+        "meta": meta,
+    }
     if error is not None:
         check_error(error)
         entry["error"] = to_stored(error, blobs, False)
@@ -491,7 +515,13 @@ def check_meta(meta: object) -> None:
     if "usage" in meta:
         if not isinstance(meta["usage"], dict):
             raise FormatError("schema", "meta.usage")
-        for name in ("inputTokens", "outputTokens", "reasoningTokens", "cacheReadTokens", "cacheWriteTokens"):
+        for name in (
+            "inputTokens",
+            "outputTokens",
+            "reasoningTokens",
+            "cacheReadTokens",
+            "cacheWriteTokens",
+        ):
             if name in meta["usage"]:
                 _check_nonneg_int(meta["usage"][name], f"meta.usage.{name}")
     if "tags" in meta:
@@ -506,7 +536,11 @@ def check_error(error: object) -> None:
     """Check a logical error object (§5.3)."""
     if not isinstance(error, dict):
         raise FormatError("schema", "error isn't an object")
-    if not {"kind", "message"} <= error.keys() <= {"kind", "message", "httpStatus", "exitCode", "details"}:
+    if (
+        not {"kind", "message"}
+        <= error.keys()
+        <= {"kind", "message", "httpStatus", "exitCode", "details"}
+    ):
         raise FormatError("schema", f"error members {sorted(error)}")
     if not isinstance(error["kind"], str) or not isinstance(error["message"], str):
         raise FormatError("schema", "error.kind and error.message must be strings")
@@ -531,7 +565,9 @@ class ReadResult:
     meta: dict[str, Any]
 
 
-def read_entry_file(root: Path, path: Path, requested: dict[str, Any] | None, limits: Limits) -> ReadResult:
+def read_entry_file(
+    root: Path, path: Path, requested: dict[str, Any] | None, limits: Limits
+) -> ReadResult:
     """§8 steps 2-8 for one file. With requested=None, the stored key is checked
     against the file name instead (as verify does)."""
     if path.stat().st_size > limits.entry_bytes:
@@ -572,7 +608,9 @@ def read_entry_file(root: Path, path: Path, requested: dict[str, Any] | None, li
     return ReadResult(content, None, entry["meta"])
 
 
-def read_entry(root: Path, requested: dict[str, Any], limits: Limits | None = None) -> ReadResult | None:
+def read_entry(
+    root: Path, requested: dict[str, Any], limits: Limits | None = None
+) -> ReadResult | None:
     """Look up a key. Returns None on a miss, and raises FormatError on damage."""
     limits = limits or Limits()
     check_layout(root)

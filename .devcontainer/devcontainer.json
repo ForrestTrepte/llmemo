@@ -46,8 +46,9 @@
         "charliermarsh.ruff"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/python/.venv/bin/python",
         "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["python/tests"],
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true,
@@ -59,9 +60,14 @@
     }
   },
 
-  // The volume mount is created as root; give it to the vscode user.
-  // Then install the project (with dev extras if defined) once a pyproject.toml exists.
-  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && python -m pip install --upgrade pip && if [ -f pyproject.toml ]; then pip install -e '.[dev]' || pip install -e .; fi",
+  // The volume mount is created as root; give it to the vscode user. Then install uv and
+  // create the package's environment in python/.venv (dev tools included).
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && pipx install uv && cd python && uv sync",
+
+  // The uv cache and the workspace are on different filesystems, so uv can't hardlink.
+  "containerEnv": {
+    "UV_LINK_MODE": "copy"
+  },
 
   "remoteUser": "vscode"
 }

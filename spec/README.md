@@ -19,12 +19,16 @@ vectors.
 Any change to canonicalization, hashing, the entry schema, the stored form, or the
 layout must update `format.md` and the vectors in the same commit, and bump the matching
 version (format.md §9) if existing files would read differently. To regenerate and check
-the vectors:
+the vectors, from the repository root:
 
 ```
-python spec/tools/generate_vectors.py
+uv run --project python python spec/tools/generate_vectors.py
 node spec/tools/check_vectors.mjs
 ```
+
+The tools use only the standard library, but they run in the package's uv environment so
+the Python version is pinned. CI runs both and fails if regenerating changes any file. A
+ruff rule stops `spec/tools/` from importing `llmemo`.
 
 The generator reads every case back with the reference reader before writing it. The
 JavaScript check must also pass. If the two implementations disagree, the spec is

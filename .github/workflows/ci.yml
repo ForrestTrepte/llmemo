@@ -1,0 +1,61 @@
+# Runs on every push to main, every pull request, and on demand from the Actions tab.
+#
+# CI has no API keys and makes no LLM calls. Tests that need a live call run locally; in CI
+# they run in cache-only mode (M2) against committed entries, or are skipped.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR cancels the run it replaces.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      # --locked fails if uv.lock is out of date with pyproject.toml.
+      - run: uv sync --locked
+      # Ruff runs from the repo root so it covers spec/tools too.
+      - run: uv run ruff check ..
+      - run: uv run ruff format --check ..
+      - run: uv run mypy
+      - run: uv run pytest
+
+  test-vectors:
+    name: Spec test vectors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      # X2: the committed vectors must be exactly what the reference generates.
+      - run: uv run --project python python spec/tools/generate_vectors.py
+      - name: Check that regenerating changed nothing
+        run: |
+          git status --porcelain spec/vectors
+          git diff --exit-code spec/vectors
+          test -z "$(git status --porcelain spec/vectors)"
+      # The independent JavaScript implementation agrees with the vectors.
+      - run: node spec/tools/check_vectors.mjs

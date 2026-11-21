@@ -1,0 +1,34 @@
+[project]
+name = "llmemo"
+version = "0.0.0"
+description = "A record-and-replay cache for LLM calls, stored as plain files committed to git."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"  # A6
+dependencies = []  # A6: few dependencies. Add one only with a reason.
+
+[project.urls]
+Repository = "https://github.com/ForrestTrepte/llmemo"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.mypy]
+# A6: strict. The spec tools are checked too, since the vectors depend on them.
+strict = true
+files = ["src", "tests", "../spec/tools"]
+python_version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+xfail_strict = true

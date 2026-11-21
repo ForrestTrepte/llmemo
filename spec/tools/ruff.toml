@@ -1,0 +1,6 @@
+extend = "../../ruff.toml"
+
+# The reference implementation is a test oracle for the package. If it imported the
+# package, a bug in llmemo could also be in the oracle, and the vectors wouldn't catch it.
+[lint.flake8-tidy-imports.banned-api]
+"llmemo".msg = "spec/tools must not import the llmemo package; it's the oracle that checks it."
