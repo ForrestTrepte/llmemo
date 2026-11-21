@@ -381,14 +381,11 @@ None right now.
 
 ## Next steps
 
-1. **Push and check that CI passes.** CI hasn't run yet. After the first push to `main`
-   (or a pull request), check the Actions tab or run `gh run list`. If a job fails, fix it
-   before starting the core.
-2. **Build the core** to [spec/format.md](spec/format.md): canonical JSON and hashing,
+1. **Build the core** to [spec/format.md](spec/format.md): canonical JSON and hashing,
    the stored form (text, vectors, escaping), file and memory stores, `call()` (sync and
    async), both modes, stats, atomic writes, locking, and the spending limit. Its tests
    must run every case in [spec/vectors/](spec/vectors/README.md). Don't import
    `spec/tools/reference.py`; it's a test oracle. Tests that make live calls must pass in
    CI without a key, by replaying committed entries in cache-only mode or by skipping.
-3. **Hand off to ConceptExpansion** for its harness phase 1 (after
+2. **Hand off to ConceptExpansion** for its harness phase 1 (after
    [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).
