@@ -341,7 +341,7 @@ const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x)
 function checkMeta(meta) {
   if (!isObject(meta)) fail("schema", "meta");
   if (typeof meta.recordedAt !== "string" || !TIMESTAMP.test(meta.recordedAt)) fail("schema", "meta.recordedAt");
-  for (const k of ["recordedBy", "servedModel", "servedBy", "toolVersion", "codeVersion"]) {
+  for (const k of ["recordedBy", "servedModel", "servedBy", "toolVersion", "codeVersion", "billing"]) {
     if (k in meta && typeof meta[k] !== "string") fail("schema", `meta.${k}`);
   }
   if ("latencyMs" in meta && !isNonNegInt(meta.latencyMs)) fail("schema", "meta.latencyMs");
@@ -410,6 +410,57 @@ function readEntry(root, requested, limits) {
   const path = join(root, id.slice(0, 3), `${id}.json`);
   if (!existsSync(path)) return null;
   return readEntryFile(root, path, requested, limits);
+}
+
+// §10 Spending ledger ----------------------------------------------------------------
+
+const ledgerPart = (name) => {
+  const part = name.replace(/[^A-Za-z0-9._-]/g, "-");
+  return /^\.*$/.test(part) ? "-" : part;
+};
+const ledgerPath = (branch, developer) =>
+  [...branch.split("/").map(ledgerPart), `${ledgerPart(developer)}.jsonl`].join("/");
+
+const isNonNegNumber = (x) => typeof x === "number" && x >= 0;
+const isString = (x) => typeof x === "string";
+const ROW_COMMON = { at: (x) => isString(x) && TIMESTAMP.test(x), by: isString };
+const ROW_OPTIONAL_COMMON = { session: isString, run: isString };
+const ROW_KINDS = {
+  call: [
+    { entryId: (x) => isString(x) && HEX64.test(x), attempt: isNonNegInt, costUsd: isNonNegNumber },
+    { label: isString, variant: isString, model: isString, billing: isString, codeVersion: isString, duplicate: (x) => typeof x === "boolean" },
+  ],
+  "key-total": [
+    { provider: isString, usageUsd: isNonNegNumber },
+    { limitUsd: isNonNegNumber, source: isString },
+  ],
+};
+
+// Returns the row, or null for a kind this reader doesn't know.
+function checkRow(row) {
+  if (!isObject(row) || !("ledgerFormat" in row)) fail("schema", "row");
+  if (row.ledgerFormat !== 1) fail("unsupported-format", `ledgerFormat ${row.ledgerFormat}`);
+  if (!isString(row.kind)) fail("schema", "row kind");
+  if (!(row.kind in ROW_KINDS)) return null;
+  const [required, optional] = ROW_KINDS[row.kind];
+  for (const [k, ok] of Object.entries({ ...ROW_COMMON, ...required })) {
+    if (!(k in row) || !ok(row[k])) fail("schema", `row ${k}`);
+  }
+  for (const [k, ok] of Object.entries({ ...ROW_OPTIONAL_COMMON, ...optional })) {
+    if (k in row && !ok(row[k])) fail("schema", `row ${k}`);
+  }
+  return row;
+}
+
+function readLedger(bytes) {
+  const rows = [];
+  for (let line of bytes.toString("utf8").split("\n")) {
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (line === "") continue;
+    const row = checkRow(parseFile(Buffer.from(line, "utf8")));
+    if (row !== null) rows.push(row);
+  }
+  return rows;
 }
 
 // Checking the vectors -------------------------------------------------------------
@@ -530,6 +581,23 @@ for (const kind of ["read-ok", "read-errors"]) {
     }
   });
 }
+
+guard("ledger", () => {
+  const v = readJson(join(VECTORS, "ledger.json"));
+  check("ledger/gitattributes", v.gitattributes === "# Written by llmemo.\n*.jsonl text eol=lf\n");
+  for (const c of v.paths) check(`ledger/paths/${c.name}`, ledgerPath(c.branch, c.developer) === c.path, ledgerPath(c.branch, c.developer));
+  for (const c of v.rows) {
+    check(`ledger/rows/${c.name} valid`, checkRow(c.row) !== null);
+    check(`ledger/rows/${c.name} line`, canonical(c.row) + "\n" === c.line, canonical(c.row));
+  }
+  for (const c of v.read) {
+    const rows = readLedger(Buffer.from(c.text, "utf8"));
+    check(`ledger/read/${c.name}`, canonical(rows) === canonical(c.expectedRows));
+  }
+  for (const c of v.readErrors) {
+    expectCode(`ledger/read-errors/${c.name}`, () => readLedger(Buffer.from(c.text, "utf8")), c.expectedErrorCode);
+  }
+});
 
 console.log(`${passes} checks passed, ${failures} failed`);
 process.exit(failures ? 1 : 0);

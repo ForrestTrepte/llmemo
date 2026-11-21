@@ -1,0 +1,213 @@
+{
+  "gitattributes": "# Written by llmemo.\n*.jsonl text eol=lf\n",
+  "paths": [
+    {
+      "name": "simple",
+      "branch": "main",
+      "developer": "ForrestTrepte",
+      "path": "main/ForrestTrepte.jsonl"
+    },
+    {
+      "name": "branch-folders",
+      "branch": "feature/ledger",
+      "developer": "ci",
+      "path": "feature/ledger/ci.jsonl"
+    },
+    {
+      "name": "unsafe-characters",
+      "branch": "fix:#12",
+      "developer": "José Q. Public",
+      "path": "fix--12/Jos--Q.-Public.jsonl"
+    },
+    {
+      "name": "dots-only",
+      "branch": "..",
+      "developer": "...",
+      "path": "-/-.jsonl"
+    },
+    {
+      "name": "empty-part",
+      "branch": "a//b",
+      "developer": "dev",
+      "path": "a/-/b/dev.jsonl"
+    }
+  ],
+  "rows": [
+    {
+      "name": "call",
+      "description": "The required members of a call row. Note costUsd's ECMAScript form, 0.00000226.",
+      "row": {
+        "ledgerFormat": 1,
+        "kind": "call",
+        "at": "2026-11-21T09:30:00.250Z",
+        "by": "claude",
+        "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+        "attempt": 0,
+        "costUsd": 2.26e-06
+      },
+      "line": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\n"
+    },
+    {
+      "name": "call-full",
+      "description": "Every member of a call row.",
+      "row": {
+        "ledgerFormat": 1,
+        "kind": "call",
+        "at": "2026-11-21T09:30:00.250Z",
+        "by": "claude",
+        "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+        "attempt": 2,
+        "costUsd": 2.26e-06,
+        "session": "14179095-03d5-454c-8d63-04e678030780",
+        "run": "20261121T093000000Z-1a2b3c4d",
+        "label": "clue-giver",
+        "variant": "trial-3",
+        "model": "claude-haiku-4-5-20251001",
+        "billing": "subscription",
+        "codeVersion": "5203929-dirty",
+        "duplicate": true
+      },
+      "line": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":2,\"billing\":\"subscription\",\"by\":\"claude\",\"codeVersion\":\"5203929-dirty\",\"costUsd\":0.00000226,\"duplicate\":true,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"label\":\"clue-giver\",\"ledgerFormat\":1,\"model\":\"claude-haiku-4-5-20251001\",\"run\":\"20261121T093000000Z-1a2b3c4d\",\"session\":\"14179095-03d5-454c-8d63-04e678030780\",\"variant\":\"trial-3\"}\n"
+    },
+    {
+      "name": "key-total",
+      "description": "A snapshot of an API key's total spending.",
+      "row": {
+        "ledgerFormat": 1,
+        "kind": "key-total",
+        "at": "2026-11-21T09:29:59.000Z",
+        "by": "developer",
+        "provider": "openrouter",
+        "usageUsd": 0.028655401,
+        "limitUsd": 10,
+        "source": "record-run"
+      },
+      "line": "{\"at\":\"2026-11-21T09:29:59.000Z\",\"by\":\"developer\",\"kind\":\"key-total\",\"ledgerFormat\":1,\"limitUsd\":10,\"provider\":\"openrouter\",\"source\":\"record-run\",\"usageUsd\":0.028655401}\n"
+    }
+  ],
+  "read": [
+    {
+      "name": "crlf-and-blank-lines",
+      "description": "CRLF line endings (after core.autocrlf) and blank lines are accepted.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\r\n\n{\"at\":\"2026-11-21T09:29:59.000Z\",\"by\":\"developer\",\"kind\":\"key-total\",\"ledgerFormat\":1,\"limitUsd\":10,\"provider\":\"openrouter\",\"source\":\"record-run\",\"usageUsd\":0.028655401}\r\n",
+      "expectedRows": [
+        {
+          "ledgerFormat": 1,
+          "kind": "call",
+          "at": "2026-11-21T09:30:00.250Z",
+          "by": "claude",
+          "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+          "attempt": 0,
+          "costUsd": 2.26e-06
+        },
+        {
+          "ledgerFormat": 1,
+          "kind": "key-total",
+          "at": "2026-11-21T09:29:59.000Z",
+          "by": "developer",
+          "provider": "openrouter",
+          "usageUsd": 0.028655401,
+          "limitUsd": 10,
+          "source": "record-run"
+        }
+      ]
+    },
+    {
+      "name": "unknown-kind-and-members",
+      "description": "A row of an unknown kind is skipped, and unknown members are ignored.",
+      "text": "{\"amountUsd\":1,\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"refund\",\"ledgerFormat\":1}\n{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"futureMember\":[1],\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedRows": [
+        {
+          "ledgerFormat": 1,
+          "kind": "call",
+          "at": "2026-11-21T09:30:00.250Z",
+          "by": "claude",
+          "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+          "attempt": 0,
+          "costUsd": 2.26e-06,
+          "futureMember": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "name": "any-layout",
+      "description": "A row needn't be canonical JSON to be read.",
+      "text": "{ \"kind\": \"call\", \"ledgerFormat\": 1, \"at\": \"2026-11-21T09:30:00.250Z\", \"by\": \"claude\", \"entryId\": \"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\", \"attempt\": 0, \"costUsd\": 0.00000226 }\n",
+      "expectedRows": [
+        {
+          "ledgerFormat": 1,
+          "kind": "call",
+          "at": "2026-11-21T09:30:00.250Z",
+          "by": "claude",
+          "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+          "attempt": 0,
+          "costUsd": 2.26e-06
+        }
+      ]
+    }
+  ],
+  "readErrors": [
+    {
+      "name": "no-ledger-format",
+      "description": "A row without ledgerFormat.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\"}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "ledger-format-2",
+      "description": "A ledgerFormat this reader doesn't know.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":2}\n",
+      "expectedErrorCode": "unsupported-format"
+    },
+    {
+      "name": "no-cost",
+      "description": "A call row needs costUsd.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "negative-cost",
+      "description": "costUsd is non-negative.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":-0.5,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "null-label",
+      "description": "Optional members are absent when unknown, never null.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"label\":null,\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "bad-entry-id",
+      "description": "entryId is 64 lowercase hex digits.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"ABC\",\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "timestamp-with-offset",
+      "description": "at is UTC with Z.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250+00:00\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "duplicate-string",
+      "description": "duplicate is a boolean.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"duplicate\":\"yes\",\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"kind\":\"call\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "no-provider",
+      "description": "A key-total row needs provider.",
+      "text": "{\"at\":\"2026-11-21T09:29:59.000Z\",\"by\":\"developer\",\"kind\":\"key-total\",\"ledgerFormat\":1,\"limitUsd\":10,\"source\":\"record-run\",\"usageUsd\":0.028655401}\n",
+      "expectedErrorCode": "schema"
+    },
+    {
+      "name": "kind-missing",
+      "description": "Every row has a kind.",
+      "text": "{\"at\":\"2026-11-21T09:30:00.250Z\",\"attempt\":0,\"by\":\"claude\",\"costUsd\":0.00000226,\"entryId\":\"501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06\",\"ledgerFormat\":1}\n",
+      "expectedErrorCode": "schema"
+    }
+  ]
+}

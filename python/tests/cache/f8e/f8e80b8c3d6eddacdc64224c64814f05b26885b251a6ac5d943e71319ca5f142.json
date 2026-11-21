@@ -1,0 +1,85 @@
+{
+  "contentSha256": "94d9b43c28b2e0fedae2e36ae70ead4b5428dffdcd285ca963ebe859e03f0b5a",
+  "entryFormat": 1,
+  "key": {
+    "attempt": 0,
+    "keyFormat": 1,
+    "label": "live-chat",
+    "request": {
+      "backend": "openrouter",
+      "body": {
+        "max_tokens": 5,
+        "messages": [
+          {
+            "content": "Reply with the single word: hi",
+            "role": "user"
+          }
+        ],
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "temperature": 0,
+        "usage": {
+          "include": true
+        }
+      }
+    }
+  },
+  "meta": {
+    "billing": "api",
+    "costUsd": 4.2e-7,
+    "latencyMs": 360,
+    "recordedAt": "2026-11-21T02:07:36.079Z",
+    "recordedBy": "llmemo-tests",
+    "servedBy": "DeepInfra",
+    "servedModel": "meta-llama/llama-3.1-8b-instruct",
+    "usage": {
+      "inputTokens": 17,
+      "outputTokens": 2
+    }
+  },
+  "reply": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "Hi",
+          "reasoning": null,
+          "refusal": null,
+          "role": "assistant"
+        },
+        "native_finish_reason": "stop"
+      }
+    ],
+    "created": 1795226855,
+    "id": "gen-1795226855-upd4vI2QdKa22smpbyut",
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "object": "chat.completion",
+    "provider": "DeepInfra",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 2,
+      "completion_tokens_details": {
+        "audio_tokens": 0,
+        "image_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "cost": 4.2e-7,
+      "cost_details": {
+        "upstream_inference_completions_cost": 8e-8,
+        "upstream_inference_cost": 4.2e-7,
+        "upstream_inference_prompt_cost": 3.4e-7
+      },
+      "is_byok": false,
+      "prompt_tokens": 17,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cache_write_tokens": 0,
+        "cached_tokens": 0,
+        "video_tokens": 0
+      },
+      "total_tokens": 19
+    }
+  }
+}

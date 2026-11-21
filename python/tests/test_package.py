@@ -1,12 +1,14 @@
-"""Smoke test until the core exists: the package imports and ships its type marker."""
+"""The package imports, exports what it says, and ships its type marker."""
 
 from importlib.resources import files
 
 import llmemo
 
 
-def test_imports() -> None:
-    assert llmemo.__all__ == []
+def test_exports() -> None:
+    for name in llmemo.__all__:
+        assert hasattr(llmemo, name), name
+    assert "Cache" in llmemo.__all__
 
 
 def test_typed() -> None:

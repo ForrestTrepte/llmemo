@@ -18,3 +18,7 @@ select = [
 ignore = ["E501"]
 # Used on purpose in prose, e.g. "256 × é".
 allowed-confusables = ["×"]
+
+# Ruff runs from the repo root, where it can't find python/src on its own.
+[lint.isort]
+known-first-party = ["llmemo"]

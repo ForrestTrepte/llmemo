@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import reference as ref
 
 VECTORS = Path(__file__).resolve().parent.parent / "vectors"
-GENERATED = ["keys.json", "invalid-keys.json", "entries", "read-ok", "read-errors"]
+GENERATED = ["keys.json", "invalid-keys.json", "entries", "read-ok", "read-errors", "ledger.json"]
 
 
 def dump(v: object) -> str:
@@ -351,6 +351,7 @@ FULL_META = {
     "servedBy": "anthropic",
     "toolVersion": "claude 2.1.3",
     "codeVersion": "5203929-dirty",
+    "billing": "subscription",
     "tags": {"run": "2026-11-20-a", "game": "17", "role": "clue-giver"},
     "extra": {"timeoutS": 120},
 }
@@ -1021,6 +1022,178 @@ def gen_read_errors() -> None:
     done(c)
 
 
+# Ledger ---------------------------------------------------------------------------
+
+LEDGER_PATHS = [
+    ("simple", "main", "ForrestTrepte", "main/ForrestTrepte.jsonl"),
+    ("branch-folders", "feature/ledger", "ci", "feature/ledger/ci.jsonl"),
+    ("unsafe-characters", "fix:#12", "José Q. Public", "fix--12/Jos--Q.-Public.jsonl"),
+    ("dots-only", "..", "...", "-/-.jsonl"),
+    ("empty-part", "a//b", "dev", "a/-/b/dev.jsonl"),
+]
+
+CALL_ROW = {
+    "ledgerFormat": 1,
+    "kind": "call",
+    "at": "2026-11-21T09:30:00.250Z",
+    "by": "claude",
+    "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",
+    "attempt": 0,
+    "costUsd": 2.26e-06,
+}
+FULL_CALL_ROW = {
+    **CALL_ROW,
+    "session": "14179095-03d5-454c-8d63-04e678030780",
+    "run": "20261121T093000000Z-1a2b3c4d",
+    "label": "clue-giver",
+    "variant": "trial-3",
+    "attempt": 2,
+    "model": "claude-haiku-4-5-20251001",
+    "billing": "subscription",
+    "codeVersion": "5203929-dirty",
+    "duplicate": True,
+}
+KEY_TOTAL_ROW = {
+    "ledgerFormat": 1,
+    "kind": "key-total",
+    "at": "2026-11-21T09:29:59.000Z",
+    "by": "developer",
+    "provider": "openrouter",
+    "usageUsd": 0.028655401,
+    "limitUsd": 10,
+    "source": "record-run",
+}
+LEDGER_ROWS = [
+    (
+        "call",
+        "The required members of a call row. Note costUsd's ECMAScript form, 0.00000226.",
+        CALL_ROW,
+    ),
+    ("call-full", "Every member of a call row.", FULL_CALL_ROW),
+    ("key-total", "A snapshot of an API key's total spending.", KEY_TOTAL_ROW),
+]
+
+
+def _line(row: dict[str, Any]) -> str:
+    return ref.ledger_line(row).decode()
+
+
+LEDGER_READS = [
+    (
+        "crlf-and-blank-lines",
+        "CRLF line endings (after core.autocrlf) and blank lines are accepted.",
+        _line(CALL_ROW).replace("\n", "\r\n") + "\n" + _line(KEY_TOTAL_ROW).replace("\n", "\r\n"),
+        [CALL_ROW, KEY_TOTAL_ROW],
+    ),
+    (
+        "unknown-kind-and-members",
+        "A row of an unknown kind is skipped, and unknown members are ignored.",
+        ref.canonical({**CALL_ROW, "kind": "refund", "amountUsd": 1})
+        + "\n"
+        + ref.canonical(dict(CALL_ROW, futureMember=[1]))
+        + "\n",
+        [{**CALL_ROW, "futureMember": [1]}],
+    ),
+    (
+        "any-layout",
+        "A row needn't be canonical JSON to be read.",
+        '{ "kind": "call", "ledgerFormat": 1, "at": "2026-11-21T09:30:00.250Z", "by": "claude",'
+        ' "entryId": "501ab2e058a83f4cee1cabdf663d6845b25585e2c8fe6f8bb5e4826cec6c4e06",'
+        ' "attempt": 0, "costUsd": 0.00000226 }\n',
+        [CALL_ROW],
+    ),
+]
+
+
+def _without(row: dict[str, Any], name: str) -> dict[str, Any]:
+    return {k: v for k, v in row.items() if k != name}
+
+
+LEDGER_READ_ERRORS = [
+    (
+        "no-ledger-format",
+        "A row without ledgerFormat.",
+        _without(CALL_ROW, "ledgerFormat"),
+        "schema",
+    ),
+    (
+        "ledger-format-2",
+        "A ledgerFormat this reader doesn't know.",
+        {**CALL_ROW, "ledgerFormat": 2},
+        "unsupported-format",
+    ),
+    ("no-cost", "A call row needs costUsd.", _without(CALL_ROW, "costUsd"), "schema"),
+    ("negative-cost", "costUsd is non-negative.", {**CALL_ROW, "costUsd": -0.5}, "schema"),
+    (
+        "null-label",
+        "Optional members are absent when unknown, never null.",
+        {**CALL_ROW, "label": None},
+        "schema",
+    ),
+    (
+        "bad-entry-id",
+        "entryId is 64 lowercase hex digits.",
+        {**CALL_ROW, "entryId": "ABC"},
+        "schema",
+    ),
+    (
+        "timestamp-with-offset",
+        "at is UTC with Z.",
+        {**CALL_ROW, "at": "2026-11-21T09:30:00.250+00:00"},
+        "schema",
+    ),
+    ("duplicate-string", "duplicate is a boolean.", {**CALL_ROW, "duplicate": "yes"}, "schema"),
+    (
+        "no-provider",
+        "A key-total row needs provider.",
+        _without(KEY_TOTAL_ROW, "provider"),
+        "schema",
+    ),
+    ("kind-missing", "Every row has a kind.", _without(CALL_ROW, "kind"), "schema"),
+]
+
+
+def gen_ledger() -> None:
+    paths = []
+    for name, branch, developer, path in LEDGER_PATHS:
+        assert ref.ledger_path(branch, developer) == path, name
+        paths.append({"name": name, "branch": branch, "developer": developer, "path": path})
+    rows = [
+        {"name": n, "description": d, "row": row, "line": _line(row)} for n, d, row in LEDGER_ROWS
+    ]
+    reads = []
+    for name, description, text, expected in LEDGER_READS:
+        got = ref.parse_ledger(text.encode())
+        assert ref.canonical(got) == ref.canonical(expected), name
+        reads.append(
+            {"name": name, "description": description, "text": text, "expectedRows": expected}
+        )
+    errors = []
+    for name, description, row, code in LEDGER_READ_ERRORS:
+        text = ref.canonical(row) + "\n"
+        try:
+            ref.parse_ledger(text.encode())
+        except ref.FormatError as e:
+            assert e.code == code, (name, e)
+        else:
+            raise AssertionError(f"{name} was accepted")
+        errors.append(
+            {"name": name, "description": description, "text": text, "expectedErrorCode": code}
+        )
+    write_text(
+        VECTORS / "ledger.json",
+        dump(
+            {
+                "gitattributes": ref.LEDGER_GITATTRIBUTES,
+                "paths": paths,
+                "rows": rows,
+                "read": reads,
+                "readErrors": errors,
+            }
+        ),
+    )
+
+
 def main() -> None:
     for name in GENERATED:
         path = VECTORS / name
@@ -1033,6 +1206,7 @@ def main() -> None:
     gen_entries()
     gen_read_ok()
     gen_read_errors()
+    gen_ledger()
     # Determinism check: a second run into a temporary folder gives the same entry trees.
     with tempfile.TemporaryDirectory() as tmp:
         for case in ENTRY_CASES:

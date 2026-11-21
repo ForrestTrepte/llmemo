@@ -2,8 +2,11 @@
 
 A record-and-replay cache for LLM calls, stored as plain files that are committed to git.
 
-**Status (2026-11-21): the format spec and test vectors are written ([spec/](spec/README.md)),
-and the Python package in `python/` is set up with tooling and CI. No cache code yet.** This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
+**Status (2026-11-21): the core of the Python package is built** to the
+[format spec](spec/README.md): keys and hashing, the stored form, file and memory stores,
+`call()`/`acall()`, record and replay modes, refresh, failures, stats, hooks, locking, and
+the spending limit and spending ledger. It passes every shared test vector. The built-in backends (A10) and
+the maintenance tools (T3–T5) aren't written yet. This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
 user is [ConceptExpansion](https://github.com/ForrestTrepte/ConceptExpansion). A TypeScript
 package that reads and writes the same cache format may follow, in this same repository.
 
@@ -209,6 +212,14 @@ There is no default mode. The caller must choose one. `[user]`
   reports what the call would have cost through the API, not money actually spent, but
   that figure counts toward the limit, since it's the best available measure of usage.
   `[T] [user]`
+- **M7. Spending ledger:** a committed, append-only record of every backend call that
+  reported a cost, in `llm-spend/<branch>/<developer>.jsonl`, so spending over time is
+  visible by branch, developer, who ran it (`claude`, `developer`, `ci`), model, and
+  billing (API money or a subscription's API-equivalent cost). Each file has one writer
+  on one branch, so ledgers never conflict when branches merge. Snapshots of an API key's
+  total, as the provider reports it, show spending the call rows don't see. llmemo's own
+  development spending is kept this way too. Specified in
+  [spec/format.md](spec/format.md) §10. `[T] [user]`
 
 ### API
 
@@ -290,6 +301,7 @@ There is no default mode. The caller must choose one. `[user]`
 ```
 docs/           Human- and agent-facing design docs
 spec/           Language-neutral format spec and test vectors (X1, X2)
+llm-spend/      This repo's own spending ledger (M7), written when live tests record
 python/         The Python package
 typescript/     Future TypeScript package (not created yet)
 .github/        CI workflow
@@ -311,6 +323,13 @@ uv run ruff format ..
 ```
 
 To regenerate and check the test vectors, see [spec/README.md](spec/README.md).
+
+`tests/test_live.py` makes real OpenRouter calls when `OPENROUTER_API_KEY` is set, and
+records them in the committed cache `python/tests/cache/`. Without the key it replays
+that cache, which is what CI does. Every live call in a run shares one $0.10
+`SpendLimit` (`tests/conftest.py`), and each call they pay for adds a row to this repo's
+ledger in `llm-spend/`. Commit the ledger along with the entries it paid for. To re-record an entry, delete its files and rerun in
+the codespace.
 
 **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on GitHub Actions for
 every push to `main`, every pull request, and on demand from the Actions tab. It runs the
@@ -374,6 +393,19 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | CI is GitHub Actions in cache-only mode, with no secrets and no live LLM calls | It can't spend money unattended, and it exercises replay, which is what llmemo is for. Live calls are tested in the codespace |
 | 2026-11-21 | One ruff config at the repo root, line length 100, with E501 off. `uv_build` is the build backend | The formatter keeps code short. The long lines left are vector descriptions, clearer unwrapped |
 | 2026-11-21 | `LICENSE` is at the repo root, and `python/LICENSE` is a symlink to it. `python/README.md` is a short package readme | GitHub detects the root license, and builds can't include files outside `python/` |
+| 2026-11-21 | The modes are named `record` and `replay` (also the values of `LLMEMO_MODE`) | Short, and match Threshold's `LLM_CACHE=record` |
+| 2026-11-21 | The public API is `Cache(store, mode=...)` with `call`, `acall`, `contains`, and `entry_id`. A backend is any `request -> Reply \| JSON value` callable. `Vector` marks embeddings. Errors are `CacheMiss`, `FormatError` (with the spec's `.code`), `SpendLimitExceeded`, `BackendError`, and `ReplayedError` | Follows A2 and Threshold's shape. The owner approved it before the core was built |
+| 2026-11-21 | Only a `BackendError` raised by the backend is saved as a failure (`failures="save"` or `"replay"`). Other exceptions propagate and are never written | Any other exception is a bug, and its message could hold a secret (E4) |
+| 2026-11-21 | Refresh (M3) is a predicate over `CallInfo` (entry ID, label, variant, attempt, tags). It replaces each entry at most once per `Cache`, and only in record mode | A single predicate covers selection by label, tag, or hash. Once per cache means repeated calls in one run hit the new entry |
+| 2026-11-21 | The spending limit is checked before each backend call. A `SpendLimit` object can be shared by several caches. A reply with no cost logs a warning once | Calls already running can overshoot it slightly, which is fine for a guard against runaway loops |
+| 2026-11-21 | A recorded call returns its reply as a replay would return it (parsed back from the bytes written) | Record and replay runs then see identical values, e.g. `1.0` comes back as `1` in both |
+| 2026-11-21 | Within a process, callers waiting on the same entry share a future; across processes they use lock files. Each `FileStore` has one daemon thread that refreshes its locks. Nothing scans the cache at startup, so cleaning up old temp files is a separate `FileStore.cleanup()` | S6 without polling inside one process, and S9 |
+| 2026-11-21 | `meta.recordedBy` defaults to `LLMEMO_RECORDED_BY`, else `ci` when `CI` is set, `claude` when `CLAUDECODE=1`, else `developer`. `codeVersion` is set only when the caller passes it (`git_code_version()` helps) | Follows Threshold. Running git on every cache open would be slow in big repos |
+| 2026-11-21 | Added a spending ledger (M7), modeled on Threshold's `llm-spend/`, before the backends | Spending should be tracked over time, including while the backends are developed. This is new, not the withdrawn run manifest (T2), which listed the entries a run used |
+| 2026-11-21 | Ledger rows are canonical JSON lines with their own `ledgerFormat`, in `<root>/<branch>/<developer>.jsonl`, with names made safe by replacing other characters with `-`. The developer is `GITHUB_USER`, else git's `user.name`, never an email address | Identical bytes from Python and TypeScript, and paths that work on every file system. Follows Threshold |
+| 2026-11-21 | A `call` row is written for every backend call that reported a cost, including a reply that couldn't be recorded and the loser of a recording race (`duplicate: true`). Hits and calls with no reported cost write nothing | The ledger records money spent, and those calls were paid for |
+| 2026-11-21 | `meta.billing` (`api` or `subscription`) is an optional metadata member, also copied into ledger rows | Reports can total real money separately from a subscription's API-equivalent cost (M6). An optional member needs no format change |
+| 2026-11-21 | `key-total` rows are part of the format now, but only the OpenRouter backend will write them | Only a provider with a spending API can report a key's total |
 
 ## Open questions
 
@@ -381,11 +413,20 @@ None right now.
 
 ## Next steps
 
-1. **Build the core** to [spec/format.md](spec/format.md): canonical JSON and hashing,
-   the stored form (text, vectors, escaping), file and memory stores, `call()` (sync and
-   async), both modes, stats, atomic writes, locking, and the spending limit. Its tests
-   must run every case in [spec/vectors/](spec/vectors/README.md). Don't import
-   `spec/tools/reference.py`; it's a test oracle. Tests that make live calls must pass in
-   CI without a key, by replaying committed entries in cache-only mode or by skipping.
+1. **Built-in backends (A10)** in the Python package: the Claude CLI (`claude -p` as a
+   subprocess, reporting usage, cost, the full served model ID, and the CLI version as
+   `toolVersion`) and OpenRouter (chat completions and embeddings, key from
+   `OPENROUTER_API_KEY`, raising `BackendError` with no headers in the message). Each
+   sets `Reply.billing` (`subscription` for the CLI, `api` for OpenRouter). The OpenRouter
+   backend also offers a way to append a `key-total` row (spec §10.2) from OpenRouter's
+   key endpoint, e.g. at the start of a recording run.
+   `python/tests/test_live.py` has a minimal OpenRouter helper to start from. Claude CLI
+   tests use the subscription, so keep them to one or two small Haiku calls recorded in
+   `python/tests/cache/`.
 2. **Hand off to ConceptExpansion** for its harness phase 1 (after
    [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is merged).
+   It needs the Claude CLI backend.
+3. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
+   exists; compare it with the latest `key-total` row to show unseen spending), prune (T3, from hashes collected by `on_entry_used`), a cost
+   and latency report (T4, from `Stats`), and verify (T5, the §8 checks on every file,
+   plus leftover locks and temp files and known secret values).

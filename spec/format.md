@@ -8,13 +8,14 @@ Python or TypeScript package must be implementable from this document and the
 
 The words **must**, **must not**, **should**, and **may** are used as in RFC 2119.
 
-Three versions are defined here, and each one changes independently (§9):
+Four versions are defined here, and each one changes independently (§9):
 
 | Version | Value | Where it's recorded | Changing it |
 |---|---|---|---|
 | `keyFormat` | `1` | Inside every key, so it's hashed (K7) | Changes every entry ID |
 | `entryFormat` | `1` | Top level of every entry file (E3) | Entries can be rewritten without changing their IDs |
 | `layoutFormat` | `1` | `llmemo.json` at the cache root | Changes where files go |
+| `ledgerFormat` | `1` | Every row of a spending ledger (§10) | Old readers refuse the new rows |
 
 ## 1. JSON values
 
@@ -336,6 +337,7 @@ contain secrets; backends must leave request headers and credentials out of `mes
 | `servedModel` | The model that actually answered, as the provider reported it |
 | `servedBy` | The provider or host that answered, e.g. an OpenRouter provider name |
 | `toolVersion` | The backend's tool or CLI version, e.g. `claude 2.1.3` |
+| `billing` | How the call was paid for: `api` (money spent) or `subscription` (counted against a plan's usage limits, so `costUsd` is an API-equivalent figure). Readers must accept any string |
 | `codeVersion` | The caller's code version, `<commit>` or `<commit>-dirty` |
 | `tags` | An object whose values are all strings, defined by the caller (e.g. `run`, `game`, `role`) |
 | `extra` | Any JSON object: values the caller passed outside the key (K6), such as a timeout |
@@ -549,6 +551,102 @@ each entry's stored key hashes to its file name.
   (since that changes the bytes writers produce). Adding an optional `meta` member
   doesn't need a change. A reader must refuse an `entryFormat` it doesn't know.
 - **`layoutFormat`** changes when file names or folders change.
+- **`ledgerFormat`** changes when a ledger row gains a required member, or a member's
+  meaning changes (§10). Adding an optional member or a new `kind` doesn't need a change.
 
 Any of these changes must update this spec and the vectors in the same commit (see
 [CLAUDE.md](../CLAUDE.md)).
+
+## 10. Spending ledger
+
+A spending ledger is a committed, append-only record of paid backend calls, kept across
+runs, branches, and people (README M7). The spending limit (M6) protects one run; the
+ledger shows what development has spent over time. It's separate from any cache, since
+one run may use several caches. It follows Threshold's `llm-spend/` ledger.
+
+### 10.1 Files
+
+```
+<ledger root>/                 llm-spend/ at the repository root, by default
+  .gitattributes
+  <branch>/<developer>.jsonl   one file per branch and developer
+```
+
+- The branch name is split on `/`, and each part becomes a folder, so `feature/ledger`
+  is `feature/ledger/<developer>.jsonl`.
+- Each folder name, and the developer name, is made safe by replacing every character
+  outside `A-Z`, `a-z`, `0-9`, `.`, `_`, and `-` with `-`. A part that is then empty, or
+  made only of dots, becomes `-`. For example, the developer `José Q. Public` is
+  `Jos--Q.-Public.jsonl`.
+- A writer should take the branch from git (`no-branch` when HEAD is detached or there's
+  no repository), and the developer from `GITHUB_USER` (set by Codespaces), else git's
+  `user.name`, else `unknown`. Never an email address.
+- Each file has one writer on one branch, so ledgers don't conflict when branches merge.
+
+When a writer creates the ledger root, it writes `.gitattributes` exactly as:
+
+```
+# Written by llmemo.
+*.jsonl text eol=lf
+```
+
+### 10.2 Rows
+
+Each line of a ledger file is one **row**: the canonical JSON (§2) of an object,
+followed by one LF. Values follow §1. Every row has these members:
+
+| Member | Required | Value |
+|---|---|---|
+| `ledgerFormat` | yes | `1` |
+| `kind` | yes | `call` or `key-total`, below |
+| `at` | yes | A timestamp, as `meta.recordedAt` (§5.4) |
+| `by` | yes | Who ran it, as `meta.recordedBy` (§5.4) |
+| `session` | no | An identifier for the interactive session, e.g. the Claude Code session ID |
+| `run` | no | An identifier for one run of a program or test suite, shared by its rows |
+
+A **`call` row** records one backend call that reported a cost. It's written whether or
+not the reply was recorded: the money was spent either way. Its other members:
+
+| Member | Required | Value |
+|---|---|---|
+| `entryId` | yes | The entry ID (§3.2) of the call's key |
+| `attempt` | yes | The key's `attempt` |
+| `costUsd` | yes | Non-negative number, as `meta.costUsd` |
+| `label` | no | The key's `label` |
+| `variant` | no | The key's `variant` |
+| `model` | no | As `meta.servedModel` |
+| `billing` | no | As `meta.billing` |
+| `codeVersion` | no | As `meta.codeVersion` |
+| `duplicate` | no | `true` when another writer recorded the same entry first, so this call's reply was discarded (§7.2) |
+
+A **`key-total` row** is a snapshot of an API key's total spending as the provider reports
+it, so a report can show spending the call rows don't see (e.g. calls made outside
+llmemo). Its other members:
+
+| Member | Required | Value |
+|---|---|---|
+| `provider` | yes | A string, e.g. `openrouter` |
+| `usageUsd` | yes | Non-negative number: the key's total spending so far |
+| `limitUsd` | no | Non-negative number: the key's spending limit, if it has one |
+| `source` | no | A string saying what took the snapshot, e.g. `record-run` |
+
+Optional members are absent when unknown, never `null`. A row never contains secrets.
+
+### 10.3 Writing and reading
+
+A writer appends each row to the end of the file with a single write in append mode
+(`O_APPEND`; Node's `a` flag), creating the file and its folders if needed. Appends this
+small aren't split on a local file system, so parallel processes can share a ledger file.
+Rows are never rewritten or removed.
+
+A reader splits the file on LF, removes one CR at the end of each line (after a checkout
+with `core.autocrlf`), and skips empty lines. Each line is parsed as §6.2 says. Then:
+
+- A row that isn't an object, or has no `ledgerFormat`, is a `schema` error. A
+  `ledgerFormat` other than 1 is `unsupported-format`.
+- A row whose `kind` the reader doesn't know is skipped, as are members it doesn't know.
+  So new kinds and optional members can be added without a format change.
+- A `call` or `key-total` row with a missing required member, or a member of the wrong
+  type, is a `schema` error.
+
+The branch and developer of each row are taken from its file's path, not from the row.
