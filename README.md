@@ -2,7 +2,7 @@
 
 A record-and-replay cache for LLM calls, stored as plain files that are committed to git.
 
-**Status (2026-11-21): the core of the Python package is built** to the
+**Status (2026-11-21): version 0.1.0 of the Python package is built** to the
 [format spec](spec/README.md): keys and hashing, the stored form, file and memory stores,
 `call()`/`acall()`, record and replay modes, refresh, failures, stats, hooks, locking, and
 the spending limit and spending ledger, and the built-in Claude CLI and OpenRouter
@@ -10,6 +10,60 @@ backends (A10). It passes every shared test vector. The maintenance tools (T3–
 written yet. This README holds the project's goals and requirements. The first implementation will be a Python package, and its first
 user is [ConceptExpansion](https://github.com/ForrestTrepte/ConceptExpansion). A TypeScript
 package that reads and writes the same cache format may follow, in this same repository.
+
+## Using llmemo
+
+Install the Python package from this repository. There's no PyPI release.
+
+```
+uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.1.0#subdirectory=python"
+```
+
+Your `uv.lock` pins the exact commit. Change the tag in that command to upgrade. The package's
+[readme](python/README.md) and [examples/quickstart.py](python/examples/quickstart.py)
+show the API.
+
+```python
+from llmemo import Cache, ClaudeCli
+
+cache = Cache("sim/cache", mode="replay", spend_limit=1.00)  # commit sim/cache/
+claude = ClaudeCli()
+request = ClaudeCli.request(
+    "claude-sonnet-5-5",  # a full model ID; aliases like "sonnet" are rejected
+    [rules_doc, "\n\nNow play as player 2."],  # parts, each stored once
+    system=[role_prompt, setting_doc],  # required; parts are concatenated
+    json_schema=MOVE_SCHEMA,  # optional structured output
+)
+result = cache.call(request, claude, label="player-move", variant="trial-3", attempt=0)
+move = parse_and_validate(result.reply["structured_output"])  # your code, on every use (E1)
+```
+
+Things to know:
+
+- **Choose a mode.** There is no default. Use `record` while developing and `replay` in CI
+  and tests, where a miss raises `CacheMiss` instead of calling the model.
+  `LLMEMO_MODE=record` or `LLMEMO_MODE=replay` overrides the code. Commit the cache folder.
+  It creates its own `.gitattributes` and `.gitignore`.
+- **Set a spending limit** (`spend_limit=`, or a shared `SpendLimit`). It stops a runaway
+  retry loop. For `claude -p` on a subscription, the CLI's reported API-equivalent cost
+  counts toward it (M6). To keep a committed record of spending, pass `ledger=Ledger()`
+  (M7).
+- **Claude CLI requests** ([spec/backends.md](spec/backends.md) §1) need a full model ID
+  and a `system` prompt, which replaces Claude Code's own. Each call runs in an empty
+  temporary folder with no tools, MCP servers, settings, or project files, so the reply
+  depends only on the request. Build the request with `ClaudeCli.request`.
+- **Split large shared text into parts.** `prompt` and `system` may be lists of strings.
+  Each long part, such as a reference document, is stored once as a `.txt` file however
+  many entries use it (S4).
+- **The Claude CLI reply is not the CLI's whole output.** The entry keeps a fixed list of
+  members of the CLI's JSON (`result`, `structured_output`, `stop_reason`, `usage`,
+  `modelUsage`, and a few more; see E1). The rest is session IDs, timings, and the login's
+  credential expiry, which don't belong in committed files.
+- **`variant` and `attempt` are part of the key.** Use `variant` for independent samples or
+  rerolls, and `attempt` for retries after invalid output, so a replay repeats the same
+  sequence of failures and successes (K3, K4).
+- **Parse and validate the reply every time.** llmemo stores the raw reply. A reply that
+  arrived but is invalid is cached like any other (E5).
 
 ## Why
 
@@ -115,7 +169,11 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
 
 - **E1. The raw reply is stored unchanged.** Parsing is the caller's job, and the caller
   validates the reply on every use. So a change to validation code takes effect without
-  re-recording. `[CE 7] [T]`
+  re-recording. A built-in backend may keep only a fixed list of the reply's members
+  when the rest describes the session rather than the reply. The Claude CLI backend
+  does this: it keeps the members listed in [spec/backends.md](spec/backends.md) §1.3
+  unchanged and drops session IDs, timings, and the login's credential expiry (E4).
+  `[CE 7] [T]`
 - **E2. Metadata**, kept for information only: when the entry was recorded, latency,
   token usage (input, output, reasoning, and tokens read from or written to the
   provider's prompt cache), cost, the model and host that actually answered, the tool or
@@ -344,6 +402,11 @@ live call run in cache-only mode (M2) against committed entries, or are skipped.
 calls run only in the codespace. Results show on each pull request and in the Actions
 tab, or with `gh run list` and `gh run view --log-failed`.
 
+**Releasing.** In one commit, set `version` in `python/pyproject.toml`, run `uv lock`, and
+change the tag in both install commands (this README and `python/README.md`). Write the docs
+as they should read once the release exists. After that commit is on `main`, tag it
+`v<version>` and push the tag.
+
 ## Documentation
 
 - [spec/format.md](spec/format.md): the cache format, with its
@@ -418,6 +481,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | The Claude CLI backend stores a fixed list of members of the CLI's JSON output (result, structured output, stop reason, usage, and so on), not the whole object | The rest is session IDs, dozens of timings, and the login's credential expiry. A fixed list keeps whatever future CLI versions add out of committed files (E4). This is a narrow reading of E1 / CE 7 |
 | 2026-11-21 | Each `claude -p` call runs in a new empty temp folder, with the system prompt in a file, the prompt on stdin, and `CLAUDECODE` removed from its environment. `billing` is `subscription` unless `ANTHROPIC_API_KEY` is set | No project files or `CLAUDE.md` leak into the call, long prompts aren't limited by the command line, and it runs inside Claude Code too |
 | 2026-11-21 | The OpenRouter backend reads its key when a call is made. A failure's message keeps only the error body's `error.message`, with the key replaced by `[key]` | Replay needs no key. Error bodies also contain the account's user ID |
+| 2026-11-21 | Version 0.1.0, released as the git tag `v0.1.0`. Users install from the tag | Gives ConceptExpansion a readable pin and a fixed point for bug reports. Still no PyPI |
 
 ## Open questions
 
@@ -425,12 +489,8 @@ None right now.
 
 ## Next steps
 
-1. **Hand off to ConceptExpansion** for its harness phase 1 (after
-   [ConceptExpansion#2](https://github.com/ForrestTrepte/ConceptExpansion/pull/2) is
-   merged). It uses `ClaudeCli` (spec/backends.md §1): pass its large reference docs as
-   separate parts of `system` or `prompt` so each is stored once. Tell it that the CLI
-   backend stores a fixed list of the CLI's output members, not the whole object (its
-   CE 7). Don't edit that repo unless the owner asks.
+1. **Hand off to ConceptExpansion** for its harness phase 1. Point it to
+   [Using llmemo](#using-llmemo) above. Don't edit that repo unless the owner asks.
 2. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
    exists; compare it with the latest `key-total` row, which `OpenRouter.record_key_total`
    writes, to show unseen spending), prune (T3, from hashes collected by `on_entry_used`),
