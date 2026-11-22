@@ -47,7 +47,7 @@ Things to know:
 - **Set a spending limit** (`spend_limit=`, or a shared `SpendLimit`). It stops a runaway
   retry loop. For `claude -p` on a subscription, the CLI's reported API-equivalent cost
   counts toward it (M6). To keep a committed record of spending, pass `ledger=Ledger()`
-  (M7).
+  (M7). Its file is named after git's `user.name`, or `LLMEMO_DEVELOPER` if that's set.
 - **Claude CLI requests** ([spec/backends.md](spec/backends.md) §1) need a full model ID
   and a `system` prompt, which replaces Claude Code's own. Each call runs in an empty
   temporary folder with no tools, MCP servers, settings, or project files, so the reply
@@ -473,7 +473,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | Within a process, callers waiting on the same entry share a future; across processes they use lock files. Each `FileStore` has one daemon thread that refreshes its locks. Nothing scans the cache at startup, so cleaning up old temp files is a separate `FileStore.cleanup()` | S6 without polling inside one process, and S9 |
 | 2026-11-21 | `meta.recordedBy` defaults to `LLMEMO_RECORDED_BY`, else `ci` when `CI` is set, `claude` when `CLAUDECODE=1`, else `developer`. `codeVersion` is set only when the caller passes it (`git_code_version()` helps) | Follows Threshold. Running git on every cache open would be slow in big repos |
 | 2026-11-21 | Added a spending ledger (M7), modeled on Threshold's `llm-spend/`, before the backends | Spending should be tracked over time, including while the backends are developed. This is new, not the withdrawn run manifest (T2), which listed the entries a run used |
-| 2026-11-21 | Ledger rows are canonical JSON lines with their own `ledgerFormat`, in `<root>/<branch>/<developer>.jsonl`, with names made safe by replacing other characters with `-`. The developer is `GITHUB_USER`, else git's `user.name`, never an email address | Identical bytes from Python and TypeScript, and paths that work on every file system. Follows Threshold |
+| 2026-11-21 | Ledger rows are canonical JSON lines with their own `ledgerFormat`, in `<root>/<branch>/<developer>.jsonl`, with names made safe by replacing other characters with `-` | Identical bytes from Python and TypeScript, and paths that work on every file system. Follows Threshold |
 | 2026-11-21 | A `call` row is written for every backend call that reported a cost, including a reply that couldn't be recorded and the loser of a recording race (`duplicate: true`). Hits and calls with no reported cost write nothing | The ledger records money spent, and those calls were paid for |
 | 2026-11-21 | `meta.billing` (`api` or `subscription`) is an optional metadata member, also copied into ledger rows | Reports can total real money separately from a subscription's API-equivalent cost (M6). An optional member needs no format change |
 | 2026-11-21 | `key-total` rows are part of the format now, but only the OpenRouter backend will write them | Only a provider with a spending API can report a key's total |
@@ -483,6 +483,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | Each `claude -p` call runs in a new empty temp folder, with the system prompt in a file, the prompt on stdin, and `CLAUDECODE` removed from its environment. `billing` is `subscription` unless `ANTHROPIC_API_KEY` is set | No project files or `CLAUDE.md` leak into the call, long prompts aren't limited by the command line, and it runs inside Claude Code too |
 | 2026-11-21 | The OpenRouter backend reads its key when a call is made. A failure's message keeps only the error body's `error.message`, with the key replaced by `[key]` | Replay needs no key. Error bodies also contain the account's user ID |
 | 2026-11-21 | Version 0.1.0, released as the git tag `v0.1.0`. Users install from the tag | Gives ConceptExpansion a readable pin and a fixed point for bug reports. Still no PyPI |
+| 2026-11-22 | The ledger's developer name is `LLMEMO_DEVELOPER`, else git's `user.name`, else `GITHUB_USER`, else `unknown`. Never an email address | `GITHUB_USER` came first before, so one person got `ForrestTrepte.jsonl` in a codespace and `Forrest-Trepte.jsonl` elsewhere (ConceptExpansion's feedback). git's name is set wherever the person commits. Rows don't hold the developer, so old files can be renamed or concatenated |
 
 ## Open questions
 

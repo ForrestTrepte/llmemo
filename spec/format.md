@@ -579,8 +579,10 @@ one run may use several caches. It follows Threshold's `llm-spend/` ledger.
   made only of dots, becomes `-`. For example, the developer `José Q. Public` is
   `Jos--Q.-Public.jsonl`.
 - A writer should take the branch from git (`no-branch` when HEAD is detached or there's
-  no repository), and the developer from `GITHUB_USER` (set by Codespaces), else git's
-  `user.name`, else `unknown`. Never an email address.
+  no repository), and the developer from `LLMEMO_DEVELOPER`, else git's `user.name`, else
+  `GITHUB_USER` (set by Codespaces), else `unknown`. Never an email address. git's name
+  comes first because it's set wherever the person commits, so one person gets the same
+  file in a codespace and on their own machine.
 - Each file has one writer on one branch, so ledgers don't conflict when branches merge.
 
 When a writer creates the ledger root, it writes `.gitattributes` exactly as:
