@@ -129,8 +129,9 @@ possible to move each of them onto llmemo later.
 
 Requirement IDs are stable. Don't renumber them. Withdraw a requirement by striking it
 through and saying why. Tags show where each one came from: `[CE n]` is
-ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptExpansion/blob/main/docs/simulated-playtesting.md#cache-requirements)
-*n*, and `[T]`, `[WS]`, and `[SC]` stand for Threshold, WordSpace, and SoCloverAI.
+ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptExpansion/blob/06ca8d250907a459d544c3de515b86e8eff7efda/docs/simulated-playtesting.md#cache-requirements)
+*n* (that list was removed from ConceptExpansion once llmemo met it, so the link is to the
+last commit that has it), and `[T]`, `[WS]`, and `[SC]` stand for Threshold, WordSpace, and SoCloverAI.
 **(later)** marks requirements that the first release doesn't need.
 
 ### Keys
