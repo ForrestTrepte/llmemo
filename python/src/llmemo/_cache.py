@@ -409,7 +409,12 @@ class Cache:
         data = self.store.read(f"{info.entry_id}.json", self.max_entry_bytes)
         if data is None:
             if self.mode == "replay":
-                raise CacheMiss(info.entry_id, info.label, info.variant, info.attempt)
+                missing = None
+                if isinstance(self.store, FileStore) and not self.store.root.exists():
+                    missing = str(self.store.root)  # spec §7.1: nothing recorded yet
+                raise CacheMiss(
+                    info.entry_id, info.label, info.variant, info.attempt, missing_folder=missing
+                )
             return None
         try:
             stored = parse_entry(data)

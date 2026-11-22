@@ -410,9 +410,12 @@ member. [tools/check_vectors.mjs](tools/check_vectors.mjs) has one.
   different hashes, so they're told apart by extension.
 - File and folder names use only lowercase hex, `.`, `-`, and the letters in the fixed
   suffixes, so they behave the same on case-insensitive file systems.
-- `llmemo.json` marks the folder as a cache. A reader that finds no `llmemo.json` reports
-  `not-a-cache` instead of treating the folder as an empty cache. A `layoutFormat` it
-  doesn't know is `unsupported-format`.
+- `llmemo.json` marks the folder as a cache. A reader that finds a folder with no
+  `llmemo.json` reports `not-a-cache` instead of treating the folder as an empty cache. A
+  `layoutFormat` it doesn't know is `unsupported-format`.
+- A cache folder that doesn't exist at all is an empty cache to a reader: every lookup is
+  a miss. That's the state before the first recording. A reader's miss should say that
+  the folder doesn't exist, in case the path is wrong.
 
 When a writer creates a new cache, it writes `llmemo.json`, plus these two files exactly
 (they're also in the write vectors):

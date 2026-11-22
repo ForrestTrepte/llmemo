@@ -180,6 +180,8 @@ class FileStore:
             self._link_new(
                 self.root, "llmemo.json", json_file_bytes({"layoutFormat": LAYOUT_FORMAT})
             )
+        if not create and not self.root.exists():
+            return  # spec §7.1: before the first recording, every lookup is a miss
         if not marker.is_file():
             raise FormatError("not-a-cache", f"{self.root} has no llmemo.json")
         info = parse_json(_read_limited(marker, 64 * 1024))

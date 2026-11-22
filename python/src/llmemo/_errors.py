@@ -42,17 +42,34 @@ class FormatError(LlmemoError, ValueError):
 class CacheMiss(LlmemoError):
     """A lookup missed in replay mode (M2)."""
 
-    def __init__(self, entry_id: str, label: str | None, variant: str | None, attempt: int) -> None:
+    def __init__(
+        self,
+        entry_id: str,
+        label: str | None,
+        variant: str | None,
+        attempt: int,
+        *,
+        missing_folder: str | None = None,
+    ) -> None:
         parts = [f"label={label!r}"] if label is not None else []
         if variant is not None:
             parts.append(f"variant={variant!r}")
         parts += [f"attempt={attempt}", f"entry {entry_id}"]
+        folder = (
+            f" The cache folder {missing_folder} doesn't exist yet. If that path is wrong, fix"
+            " it. Otherwise nothing has been recorded there."
+            if missing_folder is not None
+            else ""
+        )
         super().__init__(
             "llmemo cache miss in replay mode: "
             + ", ".join(parts)
-            + ". To record it, run with LLMEMO_MODE=record (this calls the backend and may cost"
+            + "."
+            + folder
+            + " To record it, run with LLMEMO_MODE=record (this calls the backend and may cost"
             " money), then commit the new files in the cache folder."
         )
+        self.missing_folder = missing_folder
         self.entry_id = entry_id
         self.label = label
         self.variant = variant

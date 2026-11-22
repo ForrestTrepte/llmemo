@@ -41,7 +41,8 @@ move = parse_and_validate(result.reply["structured_output"])  # your code, on ev
 Things to know:
 
 - **Choose a mode.** There is no default. Use `record` while developing and `replay` in CI
-  and tests, where a miss raises `CacheMiss` instead of calling the model.
+  and tests, where a miss raises `CacheMiss` instead of calling the model. Before the first
+  recording the cache folder doesn't exist, and replay treats it as empty.
   `LLMEMO_MODE=record` or `LLMEMO_MODE=replay` overrides the code. Commit the cache folder.
   It creates its own `.gitattributes` and `.gitignore`.
 - **Set a spending limit** (`spend_limit=`, or a shared `SpendLimit`). It stops a runaway
@@ -484,6 +485,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | The OpenRouter backend reads its key when a call is made. A failure's message keeps only the error body's `error.message`, with the key replaced by `[key]` | Replay needs no key. Error bodies also contain the account's user ID |
 | 2026-11-21 | Version 0.1.0, released as the git tag `v0.1.0`. Users install from the tag | Gives ConceptExpansion a readable pin and a fixed point for bug reports. Still no PyPI |
 | 2026-11-22 | The ledger's developer name is `LLMEMO_DEVELOPER`, else git's `user.name`, else `GITHUB_USER`, else `unknown`. Never an email address | `GITHUB_USER` came first before, so one person got `ForrestTrepte.jsonl` in a codespace and `Forrest-Trepte.jsonl` elsewhere (ConceptExpansion's feedback). git's name is set wherever the person commits. Rows don't hold the developer, so old files can be renamed or concatenated |
+| 2026-11-22 | In replay mode, a cache folder that doesn't exist is an empty cache: lookups miss, and `CacheMiss` says the folder doesn't exist. A folder that exists without `llmemo.json` is still `not-a-cache` | Replaying before the first recording raised `FormatError`, which a harness can't tell from damage (ConceptExpansion's feedback). An existing folder with no marker is the real wrong-folder case |
 
 ## Open questions
 
