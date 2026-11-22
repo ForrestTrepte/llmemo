@@ -2,7 +2,7 @@
 
 A record-and-replay cache for LLM calls, stored as plain files that are committed to git.
 
-**Status (2026-11-21): version 0.1.0 of the Python package is built** to the
+**Status (2026-11-22): version 0.2.0 of the Python package is released** to the
 [format spec](spec/README.md): keys and hashing, the stored form, file and memory stores,
 `call()`/`acall()`, record and replay modes, refresh, failures, stats, hooks, locking, and
 the spending limit and spending ledger, and the built-in Claude CLI and OpenRouter
@@ -16,7 +16,7 @@ package that reads and writes the same cache format may follow, in this same rep
 Install the Python package from this repository. There's no PyPI release.
 
 ```
-uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.1.0#subdirectory=python"
+uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.2.0#subdirectory=python"
 ```
 
 Your `uv.lock` pins the exact commit. Change the tag in that command to upgrade. The package's
@@ -494,6 +494,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-22 | In replay mode, a cache folder that doesn't exist is an empty cache: lookups miss, and `CacheMiss` says the folder doesn't exist. A folder that exists without `llmemo.json` is still `not-a-cache` | Replaying before the first recording raised `FormatError`, which a harness can't tell from damage (ConceptExpansion's feedback). An existing folder with no marker is the real wrong-folder case |
 | 2026-11-22 | A usage limit is failure kind `usage-limit`, raised as `UsageLimitReached` with `resets_at` and `limit_type`. It's never stored, whatever `failures` is. `ClaudeCli` detects it from the CLI's `api_error: "usage_limit_reached"` and reads the reset time from `api_error_params.rate_limit_info`, with no guessing from message text | A harness can stop and resume from the cache (ConceptExpansion's feedback). A stored one would replay after the limit resets. The CLI marks those members internal, so if they change, the call falls back to `http`/`process` |
 | 2026-11-22 | The devcontainer doesn't keep `~/.claude` on a volume. A rebuild starts Claude Code fresh, so log in again | The volume only helped across rebuilds of one codespace, missed `~/.claude.json`, and needed a root `chown`. Anything worth keeping goes in checked-in files (CLAUDE.md) |
+| 2026-11-22 | Version 0.2.0, tagged `v0.2.0`. It's a minor version, not 0.1.1 | It adds `UsageLimitReached` and `LLMEMO_DEVELOPER`, and changes ledger file names and the missing-folder error. A 0.x package bumps its minor version for new or changed behaviour |
 
 ## Open questions
 
@@ -501,17 +502,15 @@ None right now.
 
 ## Next steps
 
-1. **Release 0.2.0** once branch `ce-feedback` (ConceptExpansion's feedback: usage limits,
-   the ledger name, the missing cache folder, and the requirements link) is merged.
-   Follow **Releasing** under Development.
-2. **Tell ConceptExpansion** what 0.2.0 changes for it. Don't edit that repo unless the
+1. **Tell ConceptExpansion** what 0.2.0 changes for it. Don't edit that repo unless the
    owner asks:
+   - Upgrade by running the install command in [Using llmemo](#using-llmemo) (`@v0.2.0`).
    - Catch `UsageLimitReached` to stop at a usage limit and resume after `resets_at`.
    - Its ledger now goes in one file named after git's `user.name`. It should concatenate
      its `ForrestTrepte.jsonl` and `Forrest-Trepte.jsonl` on each branch. Rows don't hold
      the developer, so that's safe.
    - Replaying before the first recording now raises `CacheMiss`, not `FormatError`.
-3. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
+2. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
    exists; compare it with the latest `key-total` row, which `OpenRouter.record_key_total`
    writes, to show unseen spending), prune (T3, from hashes collected by `on_entry_used`),
    a cost and latency report (T4, from `Stats`), and verify (T5, the §8 checks on every

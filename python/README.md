@@ -8,7 +8,7 @@ format spec are in the [repository](https://github.com/ForrestTrepte/llmemo).
 Install from git (there's no PyPI release yet):
 
 ```
-uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.1.0#subdirectory=python"
+uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.2.0#subdirectory=python"
 ```
 
 Two backends are built in: `ClaudeCli` (`claude -p` on a Claude subscription) and
