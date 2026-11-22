@@ -22,11 +22,6 @@
     }
   },
 
-  // Keep Claude Code's login and settings across container rebuilds.
-  "mounts": [
-    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
-  ],
-
   "customizations": {
     // Grant this Codespace's token access to related repos (approved on Codespace creation).
     "codespaces": {
@@ -60,9 +55,10 @@
     }
   },
 
-  // The volume mount is created as root; give it to the vscode user. Then install uv and
-  // create the package's environment in python/.venv (dev tools included).
-  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && pipx install uv && cd python && uv sync",
+  // Install uv and create the package's environment in python/.venv (dev tools included).
+  // Claude Code's state in ~/.claude isn't kept on a volume, so a rebuild starts it fresh
+  // (log in again). Anything worth keeping goes in checked-in files (see CLAUDE.md).
+  "postCreateCommand": "pipx install uv && cd python && uv sync",
 
   // The uv cache and the workspace are on different filesystems, so uv can't hardlink.
   "containerEnv": {
