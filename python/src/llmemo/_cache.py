@@ -555,8 +555,8 @@ class Cache:
     ) -> None:
         """E5: no reply arrived. Save it only if asked to."""
         self._log_line_info("failed", info, error.kind)
-        if self.failures == "discard":
-            return
+        if self.failures == "discard" or error.kind == "usage-limit":
+            return  # a usage limit is about the account, not the request (spec §5.3)
         built = build_entry(key, self._meta(info, started, None), error=error.to_json())
         if self.failures == "save":
             for name, data in built.blobs.items():

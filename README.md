@@ -63,6 +63,10 @@ Things to know:
 - **`variant` and `attempt` are part of the key.** Use `variant` for independent samples or
   rerolls, and `attempt` for retries after invalid output, so a replay repeats the same
   sequence of failures and successes (K3, K4).
+- **Stop cleanly at a usage limit.** When the subscription's limit refuses a call,
+  `ClaudeCli` raises `UsageLimitReached` (a `BackendError`) with `resets_at`, a UTC
+  `datetime`, or `None` if the CLI didn't say. It's never saved as a failure. Stop the run,
+  and rerun after `resets_at`: everything recorded so far replays from the cache.
 - **Parse and validate the reply every time.** llmemo stores the raw reply. A reply that
   arrived but is invalid is cached like any other (E5).
 
@@ -190,7 +194,9 @@ last commit that has it), and `[T]`, `[WS]`, and `[SC]` stand for Threshold, Wor
   or wrong schema) is cached like any other. When no reply arrived (a network or HTTP
   error, or a timeout), nothing is cached by default. As an option, the failure can be
   saved for diagnosis or replayed on purpose, as WordSpace does with `.exception` and
-  `.inject` files. `[CE 10] [T] [WS]`
+  `.inject` files. A usage limit (e.g. a subscription's 5-hour limit) has its own error,
+  with the reset time when the backend reports it, and is never saved, since it's about the
+  account rather than the request. `[CE 10] [T] [WS] [user]`
 - **E6. (later) Streaming.** A complete reply (text plus any tool call) can be replayed
   as a stream, so a cached chat feels the same as a live one. `[T]`
 
@@ -486,6 +492,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | Version 0.1.0, released as the git tag `v0.1.0`. Users install from the tag | Gives ConceptExpansion a readable pin and a fixed point for bug reports. Still no PyPI |
 | 2026-11-22 | The ledger's developer name is `LLMEMO_DEVELOPER`, else git's `user.name`, else `GITHUB_USER`, else `unknown`. Never an email address | `GITHUB_USER` came first before, so one person got `ForrestTrepte.jsonl` in a codespace and `Forrest-Trepte.jsonl` elsewhere (ConceptExpansion's feedback). git's name is set wherever the person commits. Rows don't hold the developer, so old files can be renamed or concatenated |
 | 2026-11-22 | In replay mode, a cache folder that doesn't exist is an empty cache: lookups miss, and `CacheMiss` says the folder doesn't exist. A folder that exists without `llmemo.json` is still `not-a-cache` | Replaying before the first recording raised `FormatError`, which a harness can't tell from damage (ConceptExpansion's feedback). An existing folder with no marker is the real wrong-folder case |
+| 2026-11-22 | A usage limit is failure kind `usage-limit`, raised as `UsageLimitReached` with `resets_at` and `limit_type`. It's never stored, whatever `failures` is. `ClaudeCli` detects it from the CLI's `api_error: "usage_limit_reached"` and reads the reset time from `api_error_params.rate_limit_info`, with no guessing from message text | A harness can stop and resume from the cache (ConceptExpansion's feedback). A stored one would replay after the limit resets. The CLI marks those members internal, so if they change, the call falls back to `http`/`process` |
 
 ## Open questions
 

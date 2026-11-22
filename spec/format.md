@@ -312,7 +312,7 @@ The error object:
 
 | Member | Required | Value |
 |---|---|---|
-| `kind` | yes | A string. Backends should use one of `timeout`, `network`, `http`, `process`, `other`. Readers must accept any string |
+| `kind` | yes | A string. Backends should use one of `timeout`, `network`, `http`, `process`, `usage-limit`, `other`. Readers must accept any string |
 | `message` | yes | A string |
 | `httpStatus` | no | An integer HTTP status code |
 | `exitCode` | no | An integer process exit code |
@@ -321,6 +321,12 @@ The error object:
 Readers must reject other members of the error object (`schema`). An error must not
 contain secrets; backends must leave request headers and credentials out of `message` and
 `details`.
+
+Kind `usage-limit` means the account's usage limit refused the call (e.g. a subscription's
+5-hour or weekly limit). It's about the account, not the request, so a writer never
+stores it, as either a failure record or an error entry: replaying it would block the call
+after the limit resets. When the backend reports them, `details` is an object with
+`resetsAt` (a UTC timestamp, §5.4) and `limitType` (the backend's name for the limit).
 
 ### 5.4 Metadata
 

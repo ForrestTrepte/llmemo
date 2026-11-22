@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 # The codes of spec/format.md §8. Both packages and their tests agree on these.
@@ -124,6 +125,46 @@ class BackendError(LlmemoError):
             exit_code=error.get("exitCode"),
             details=error.get("details"),
         )
+
+
+class UsageLimitReached(BackendError):
+    """The account's usage limit refused the call (kind `usage-limit`, spec §5.3).
+
+    It's about the account, not the request, so it's never saved, whatever `failures` is.
+    `resets_at` is when the limit resets (UTC), and `limit_type` names the limit (e.g.
+    `five_hour`), when the backend reports them. A harness can stop here and rerun after
+    `resets_at`: everything recorded so far replays from the cache.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        resets_at: datetime | None = None,
+        limit_type: str | None = None,
+        http_status: int | None = None,
+        exit_code: int | None = None,
+    ) -> None:
+        details: dict[str, Any] = {}
+        if resets_at is not None:
+            details["resetsAt"] = _utc_iso(resets_at)
+        if limit_type is not None:
+            details["limitType"] = limit_type
+        super().__init__(
+            "usage-limit",
+            message,
+            http_status=http_status,
+            exit_code=exit_code,
+            details=details or None,
+        )
+        self.resets_at = resets_at
+        self.limit_type = limit_type
+
+
+def _utc_iso(t: datetime) -> str:
+    """X3: UTC ISO 8601 with milliseconds and Z."""
+    t = t.astimezone(UTC)
+    return t.strftime("%Y-%m-%dT%H:%M:%S.") + f"{t.microsecond // 1000:03d}Z"
 
 
 class ReplayedError(BackendError):

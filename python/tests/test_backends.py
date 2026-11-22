@@ -12,13 +12,14 @@ import socket
 import sys
 import threading
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 
-from llmemo import BackendError, Cache, ClaudeCli, MemoryStore, OpenRouter
+from llmemo import BackendError, Cache, ClaudeCli, MemoryStore, OpenRouter, UsageLimitReached
 
 # Claude CLI ---------------------------------------------------------------------------
 
@@ -160,6 +161,53 @@ def test_error_without_status(tmp_path: Path) -> None:
     with pytest.raises(BackendError) as e:
         cli(request())
     assert (e.value.kind, e.value.message, e.value.exit_code) == ("process", "limit", 1)
+
+
+# What claude -p 2.1.329 prints when a subscription's usage limit refuses a call. A real
+# one can't be produced on demand, so this is a fake.
+USAGE_LIMIT = {
+    "type": "result",
+    "subtype": "success",
+    "is_error": True,
+    "result": "You've hit your session limit · resets 3pm (UTC)",
+    "api_error_status": 429,
+    "api_error": "usage_limit_reached",
+    "api_error_params": {
+        "rate_limit_info": {
+            "status": "rejected",
+            "rateLimitType": "five_hour",
+            "resetsAt": 1795014000,
+            "isUsingOverage": False,
+        }
+    },
+}
+
+
+@pytest.mark.parametrize("failures", ["discard", "save", "replay"])
+def test_usage_limit(tmp_path: Path, failures: Literal["discard", "save", "replay"]) -> None:
+    """A usage limit has its own error and reset time, and is never saved (spec §5.3)."""
+    store = MemoryStore()
+    body = f"print(json.dumps({USAGE_LIMIT!r})); sys.exit(1)\n"
+    cli = ClaudeCli(executable=fake_cli(tmp_path, body))
+    with pytest.raises(UsageLimitReached) as e:
+        Cache(store, mode="record", failures=failures).call(request(), cli)
+    assert e.value.kind == "usage-limit" and e.value.http_status == 429
+    assert e.value.resets_at == datetime(2026, 11, 18, 15, 0, tzinfo=UTC)
+    assert e.value.limit_type == "five_hour"
+    assert e.value.to_json()["details"] == {
+        "resetsAt": "2026-11-18T15:00:00.000Z",
+        "limitType": "five_hour",
+    }
+    assert not store._files
+
+
+def test_usage_limit_without_reset_time(tmp_path: Path) -> None:
+    error = {k: v for k, v in USAGE_LIMIT.items() if k != "api_error_params"}
+    cli = ClaudeCli(executable=fake_cli(tmp_path, f"print(json.dumps({error!r})); sys.exit(1)\n"))
+    with pytest.raises(UsageLimitReached) as e:
+        cli(request())
+    assert e.value.resets_at is None and e.value.limit_type is None
+    assert "details" not in e.value.to_json()
 
 
 def test_failure_saved(tmp_path: Path) -> None:
