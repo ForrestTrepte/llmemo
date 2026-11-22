@@ -21,6 +21,7 @@ from ._errors import (
     LlmemoError,
     ReplayedError,
     SpendLimitExceeded,
+    UsageLimitReached,
 )
 from ._ledger import Ledger, LedgerFile, Spending, read_ledgers, summarize_spending
 from ._openrouter import OpenRouter
@@ -51,6 +52,7 @@ __all__ = [
     "Store",
     "Totals",
     "Usage",
+    "UsageLimitReached",
     "Vector",
     "git_code_version",
     "read_ledgers",

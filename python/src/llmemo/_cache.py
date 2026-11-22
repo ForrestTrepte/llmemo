@@ -409,7 +409,12 @@ class Cache:
         data = self.store.read(f"{info.entry_id}.json", self.max_entry_bytes)
         if data is None:
             if self.mode == "replay":
-                raise CacheMiss(info.entry_id, info.label, info.variant, info.attempt)
+                missing = None
+                if isinstance(self.store, FileStore) and not self.store.root.exists():
+                    missing = str(self.store.root)  # spec §7.1: nothing recorded yet
+                raise CacheMiss(
+                    info.entry_id, info.label, info.variant, info.attempt, missing_folder=missing
+                )
             return None
         try:
             stored = parse_entry(data)
@@ -550,8 +555,8 @@ class Cache:
     ) -> None:
         """E5: no reply arrived. Save it only if asked to."""
         self._log_line_info("failed", info, error.kind)
-        if self.failures == "discard":
-            return
+        if self.failures == "discard" or error.kind == "usage-limit":
+            return  # a usage limit is about the account, not the request (spec §5.3)
         built = build_entry(key, self._meta(info, started, None), error=error.to_json())
         if self.failures == "save":
             for name, data in built.blobs.items():

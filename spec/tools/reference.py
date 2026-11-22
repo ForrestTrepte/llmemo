@@ -614,6 +614,8 @@ def read_entry(
 ) -> ReadResult | None:
     """Look up a key. Returns None on a miss, and raises FormatError on damage."""
     limits = limits or Limits()
+    if not root.exists():
+        return None  # §7.1: a missing folder is an empty cache
     check_layout(root)
     eid = entry_id(requested)
     path = root / eid[:3] / f"{eid}.json"

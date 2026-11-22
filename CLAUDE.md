@@ -33,9 +33,9 @@ into a checked-in file.
   `[user]`).
 - Refer to requirement IDs in code comments, tests, and the spec when they explain why
   something is done.
-- ConceptExpansion's list in its `docs/simulated-playtesting.md` is the first user's
-  checklist. If you change how one of those requirements is met, say so to the user.
-  Don't edit the other repo.
+- ConceptExpansion's requirements (`[CE n]`) come from a list it has since removed; the
+  README links to the last commit that has it. They're tracked only in this README now.
+  If you change how one of them is met, say so to the user. Don't edit the other repo.
 
 ## The format is a contract between languages
 

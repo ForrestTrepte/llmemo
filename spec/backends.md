@@ -63,10 +63,19 @@ change replies needs a new `backend` value.
 The CLI prints one JSON object. If it can't be parsed, or its `type` isn't `"result"`,
 nothing arrived: the call fails with kind `process` and the exit code. If `is_error` is
 `true`, nothing arrived either (e.g. an unknown model, an API error, or a usage limit). The
-call fails with kind `http` and `httpStatus` set to `api_error_status` when that is an
-integer, else with kind `process`. The message is the object's `result`, cut to 500
-characters. These failures are handled as format.md §5.3 and README E5 say: not stored
-by default.
+message is the object's `result`, cut to 500 characters, and the kind is:
+
+- `usage-limit` when `api_error` is `"usage_limit_reached"` (the subscription's limit).
+  `details.resetsAt` comes from `api_error_params.rate_limit_info.resetsAt` (Unix
+  seconds), and `details.limitType` from its `rateLimitType` (e.g. `five_hour`), each when
+  present. `httpStatus` is `api_error_status` when that is an integer. As of CLI 2.1.329
+  these members are marked internal, so if the CLI stops sending `api_error`, the call
+  falls back to the rules below rather than guessing from the message text.
+- else `http`, with `httpStatus` set to `api_error_status` when that is an integer,
+- else `process`.
+
+These failures are handled as format.md §5.3 and README E5 say: not stored by default, and
+a `usage-limit` failure is never stored.
 
 Otherwise the stored reply is the object with only these members, when present, unchanged:
 `type`, `subtype`, `is_error`, `result`, `structured_output`, `stop_reason`,

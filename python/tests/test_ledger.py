@@ -87,18 +87,22 @@ def git(cwd: Path, *args: str) -> None:
 
 
 def test_defaults_come_from_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("GITHUB_USER", raising=False)
-    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
-    git(tmp_path, "init", "-q", "-b", "feature/ledger")
-    git(tmp_path, "config", "user.name", "Ada Lovelace")
-    monkeypatch.chdir(tmp_path)
-    ledger = Ledger()
-    assert ledger.path == tmp_path / "llm-spend" / "feature" / "ledger" / "Ada-Lovelace.jsonl"
-    assert ledger.session is None
+    monkeypatch.delenv("LLMEMO_DEVELOPER", raising=False)
     monkeypatch.setenv("GITHUB_USER", "ada")
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "no-global-config"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    git(tmp_path, "init", "-q", "-b", "feature/ledger")
+    monkeypatch.chdir(tmp_path)
+    ledger = Ledger()  # no git user.name, so GITHUB_USER
+    assert ledger.path == tmp_path / "llm-spend" / "feature" / "ledger" / "ada.jsonl"
+    assert ledger.session is None
+    git(tmp_path, "config", "user.name", "Ada Lovelace")
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "s-1")
-    ledger = Ledger()
-    assert ledger.path.name == "ada.jsonl" and ledger.session == "s-1"
+    ledger = Ledger()  # git's name wins over GITHUB_USER, so one person gets one file
+    assert ledger.path.name == "Ada-Lovelace.jsonl" and ledger.session == "s-1"
+    monkeypatch.setenv("LLMEMO_DEVELOPER", "Ada")
+    assert Ledger().path.name == "Ada.jsonl"
 
 
 def test_parallel_appends_dont_interleave(tmp_path: Path) -> None:

@@ -164,9 +164,25 @@ def test_miss_in_replay_names_the_key(tmp_path: Path) -> None:
         assert part in msg
 
 
-def test_replay_needs_an_existing_cache(tmp_path: Path) -> None:
+def test_replay_before_the_first_recording_misses(tmp_path: Path) -> None:
+    """Spec §7.1: a cache folder that doesn't exist yet is empty, and the miss says so."""
+    folder = tmp_path / "sim" / "cache"
+    cache = Cache(folder, mode="replay")
+    assert not cache.contains(REQUEST)
+    with pytest.raises(CacheMiss) as e:
+        cache.call(REQUEST, Counter())
+    assert e.value.missing_folder == str(folder)
+    assert f"The cache folder {folder} doesn't exist yet" in str(e.value)
+    assert not folder.exists()  # replay never creates it
+    Cache(folder, mode="record").call(REQUEST, Counter())
+    with pytest.raises(CacheMiss) as e:
+        cache.call(REQUEST, Counter(), variant="other")
+    assert e.value.missing_folder is None
+
+
+def test_replay_wont_read_a_folder_that_isnt_a_cache(tmp_path: Path) -> None:
     with pytest.raises(FormatError) as e:
-        Cache(tmp_path / "nothing", mode="replay").call(REQUEST, Counter())
+        Cache(tmp_path, mode="replay").call(REQUEST, Counter())
     assert e.value.code == "not-a-cache"
 
 

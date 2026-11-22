@@ -312,7 +312,7 @@ The error object:
 
 | Member | Required | Value |
 |---|---|---|
-| `kind` | yes | A string. Backends should use one of `timeout`, `network`, `http`, `process`, `other`. Readers must accept any string |
+| `kind` | yes | A string. Backends should use one of `timeout`, `network`, `http`, `process`, `usage-limit`, `other`. Readers must accept any string |
 | `message` | yes | A string |
 | `httpStatus` | no | An integer HTTP status code |
 | `exitCode` | no | An integer process exit code |
@@ -321,6 +321,12 @@ The error object:
 Readers must reject other members of the error object (`schema`). An error must not
 contain secrets; backends must leave request headers and credentials out of `message` and
 `details`.
+
+Kind `usage-limit` means the account's usage limit refused the call (e.g. a subscription's
+5-hour or weekly limit). It's about the account, not the request, so a writer never
+stores it, as either a failure record or an error entry: replaying it would block the call
+after the limit resets. When the backend reports them, `details` is an object with
+`resetsAt` (a UTC timestamp, §5.4) and `limitType` (the backend's name for the limit).
 
 ### 5.4 Metadata
 
@@ -410,9 +416,12 @@ member. [tools/check_vectors.mjs](tools/check_vectors.mjs) has one.
   different hashes, so they're told apart by extension.
 - File and folder names use only lowercase hex, `.`, `-`, and the letters in the fixed
   suffixes, so they behave the same on case-insensitive file systems.
-- `llmemo.json` marks the folder as a cache. A reader that finds no `llmemo.json` reports
-  `not-a-cache` instead of treating the folder as an empty cache. A `layoutFormat` it
-  doesn't know is `unsupported-format`.
+- `llmemo.json` marks the folder as a cache. A reader that finds a folder with no
+  `llmemo.json` reports `not-a-cache` instead of treating the folder as an empty cache. A
+  `layoutFormat` it doesn't know is `unsupported-format`.
+- A cache folder that doesn't exist at all is an empty cache to a reader: every lookup is
+  a miss. That's the state before the first recording. A reader's miss should say that
+  the folder doesn't exist, in case the path is wrong.
 
 When a writer creates a new cache, it writes `llmemo.json`, plus these two files exactly
 (they're also in the write vectors):
@@ -579,8 +588,10 @@ one run may use several caches. It follows Threshold's `llm-spend/` ledger.
   made only of dots, becomes `-`. For example, the developer `José Q. Public` is
   `Jos--Q.-Public.jsonl`.
 - A writer should take the branch from git (`no-branch` when HEAD is detached or there's
-  no repository), and the developer from `GITHUB_USER` (set by Codespaces), else git's
-  `user.name`, else `unknown`. Never an email address.
+  no repository), and the developer from `LLMEMO_DEVELOPER`, else git's `user.name`, else
+  `GITHUB_USER` (set by Codespaces), else `unknown`. Never an email address. git's name
+  comes first because it's set wherever the person commits, so one person gets the same
+  file in a codespace and on their own machine.
 - Each file has one writer on one branch, so ledgers don't conflict when branches merge.
 
 When a writer creates the ledger root, it writes `.gitattributes` exactly as:

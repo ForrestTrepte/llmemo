@@ -13,11 +13,12 @@ import subprocess
 import tempfile
 import threading
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ._cache import Reply, Usage
-from ._errors import BackendError
+from ._errors import BackendError, UsageLimitReached
 
 BACKEND = "claude-cli"
 
@@ -112,6 +113,27 @@ def _served(model: str, model_usage: object) -> tuple[str | None, str | None]:
     info = model_usage[name]
     provider = info.get("provider") if isinstance(info, dict) else None
     return name, provider if isinstance(provider, str) else None
+
+
+def _usage_limit(
+    out: Mapping[str, Any], text: str, status: int | None, code: int
+) -> UsageLimitReached:
+    """spec/backends.md §1.3: the subscription's limit refused the call."""
+    params = out.get("api_error_params")
+    info = params.get("rate_limit_info") if isinstance(params, dict) else None
+    info = info if isinstance(info, dict) else {}
+    resets = info.get("resetsAt")  # Unix seconds
+    resets_at = None
+    if isinstance(resets, int | float) and not isinstance(resets, bool) and 0 < resets < 1e11:
+        resets_at = datetime.fromtimestamp(resets, UTC)
+    kind = info.get("rateLimitType")
+    return UsageLimitReached(
+        text,
+        resets_at=resets_at,
+        limit_type=kind if isinstance(kind, str) else None,
+        http_status=status,
+        exit_code=code,
+    )
 
 
 def _short(text: str) -> str:
@@ -298,6 +320,8 @@ class ClaudeCli:
             message = out.get("result")
             text = _short(message) if isinstance(message, str) else "claude -p reported an error"
             status = out.get("api_error_status")
+            if out.get("api_error") == "usage_limit_reached":
+                raise _usage_limit(out, text, status if type(status) is int else None, code)
             if type(status) is int:
                 raise BackendError("http", text, http_status=status, exit_code=code)
             raise BackendError("process", text, exit_code=code)

@@ -132,8 +132,8 @@ class Ledger:
 
     Pass one to `Cache(ledger=...)`; it can be shared by several caches. `root` defaults to
     `llm-spend/` at the top of the current git repository. `branch` defaults to git's
-    current branch (`no-branch` if HEAD is detached), and `developer` to `GITHUB_USER`,
-    else git's `user.name`, else `unknown`; never an email address. `session` defaults to
+    current branch (`no-branch` if HEAD is detached), and `developer` to `LLMEMO_DEVELOPER`,
+    else git's `user.name`, else `GITHUB_USER`, else `unknown`; never an email address. `session` defaults to
     Claude Code's `CLAUDE_CODE_SESSION_ID`. `run` identifies this run's rows, and defaults
     to a new ID.
     """
@@ -157,8 +157,12 @@ class Ledger:
         if branch is None:
             branch = _git(where, "symbolic-ref", "--short", "-q", "HEAD") or "no-branch"
         if developer is None:
+            # git's name first, so one person gets one file in a codespace and elsewhere.
             developer = (
-                os.environ.get("GITHUB_USER") or _git(where, "config", "user.name") or "unknown"
+                os.environ.get("LLMEMO_DEVELOPER")
+                or _git(where, "config", "user.name")
+                or os.environ.get("GITHUB_USER")
+                or "unknown"
             )
         self.branch = branch
         self.developer = developer

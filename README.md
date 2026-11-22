@@ -2,7 +2,7 @@
 
 A record-and-replay cache for LLM calls, stored as plain files that are committed to git.
 
-**Status (2026-11-21): version 0.1.0 of the Python package is built** to the
+**Status (2026-11-22): version 0.2.0 of the Python package is released** to the
 [format spec](spec/README.md): keys and hashing, the stored form, file and memory stores,
 `call()`/`acall()`, record and replay modes, refresh, failures, stats, hooks, locking, and
 the spending limit and spending ledger, and the built-in Claude CLI and OpenRouter
@@ -16,7 +16,7 @@ package that reads and writes the same cache format may follow, in this same rep
 Install the Python package from this repository. There's no PyPI release.
 
 ```
-uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.1.0#subdirectory=python"
+uv add "llmemo @ git+https://github.com/ForrestTrepte/llmemo@v0.2.0#subdirectory=python"
 ```
 
 Your `uv.lock` pins the exact commit. Change the tag in that command to upgrade. The package's
@@ -41,13 +41,14 @@ move = parse_and_validate(result.reply["structured_output"])  # your code, on ev
 Things to know:
 
 - **Choose a mode.** There is no default. Use `record` while developing and `replay` in CI
-  and tests, where a miss raises `CacheMiss` instead of calling the model.
+  and tests, where a miss raises `CacheMiss` instead of calling the model. Before the first
+  recording the cache folder doesn't exist, and replay treats it as empty.
   `LLMEMO_MODE=record` or `LLMEMO_MODE=replay` overrides the code. Commit the cache folder.
   It creates its own `.gitattributes` and `.gitignore`.
 - **Set a spending limit** (`spend_limit=`, or a shared `SpendLimit`). It stops a runaway
   retry loop. For `claude -p` on a subscription, the CLI's reported API-equivalent cost
   counts toward it (M6). To keep a committed record of spending, pass `ledger=Ledger()`
-  (M7).
+  (M7). Its file is named after git's `user.name`, or `LLMEMO_DEVELOPER` if that's set.
 - **Claude CLI requests** ([spec/backends.md](spec/backends.md) §1) need a full model ID
   and a `system` prompt, which replaces Claude Code's own. Each call runs in an empty
   temporary folder with no tools, MCP servers, settings, or project files, so the reply
@@ -62,6 +63,10 @@ Things to know:
 - **`variant` and `attempt` are part of the key.** Use `variant` for independent samples or
   rerolls, and `attempt` for retries after invalid output, so a replay repeats the same
   sequence of failures and successes (K3, K4).
+- **Stop cleanly at a usage limit.** When the subscription's limit refuses a call,
+  `ClaudeCli` raises `UsageLimitReached` (a `BackendError`) with `resets_at`, a UTC
+  `datetime`, or `None` if the CLI didn't say. It's never saved as a failure. Stop the run,
+  and rerun after `resets_at`: everything recorded so far replays from the cache.
 - **Parse and validate the reply every time.** llmemo stores the raw reply. A reply that
   arrived but is invalid is cached like any other (E5).
 
@@ -129,8 +134,9 @@ possible to move each of them onto llmemo later.
 
 Requirement IDs are stable. Don't renumber them. Withdraw a requirement by striking it
 through and saying why. Tags show where each one came from: `[CE n]` is
-ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptExpansion/blob/main/docs/simulated-playtesting.md#cache-requirements)
-*n*, and `[T]`, `[WS]`, and `[SC]` stand for Threshold, WordSpace, and SoCloverAI.
+ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptExpansion/blob/06ca8d250907a459d544c3de515b86e8eff7efda/docs/simulated-playtesting.md#cache-requirements)
+*n* (that list was removed from ConceptExpansion once llmemo met it, so the link is to the
+last commit that has it), and `[T]`, `[WS]`, and `[SC]` stand for Threshold, WordSpace, and SoCloverAI.
 **(later)** marks requirements that the first release doesn't need.
 
 ### Keys
@@ -188,7 +194,9 @@ ConceptExpansion's [cache requirement](https://github.com/ForrestTrepte/ConceptE
   or wrong schema) is cached like any other. When no reply arrived (a network or HTTP
   error, or a timeout), nothing is cached by default. As an option, the failure can be
   saved for diagnosis or replayed on purpose, as WordSpace does with `.exception` and
-  `.inject` files. `[CE 10] [T] [WS]`
+  `.inject` files. A usage limit (e.g. a subscription's 5-hour limit) has its own error,
+  with the reset time when the backend reports it, and is never saved, since it's about the
+  account rather than the request. `[CE 10] [T] [WS] [user]`
 - **E6. (later) Streaming.** A complete reply (text plus any tool call) can be replayed
   as a stream, so a cached chat feels the same as a live one. `[T]`
 
@@ -472,7 +480,7 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | Within a process, callers waiting on the same entry share a future; across processes they use lock files. Each `FileStore` has one daemon thread that refreshes its locks. Nothing scans the cache at startup, so cleaning up old temp files is a separate `FileStore.cleanup()` | S6 without polling inside one process, and S9 |
 | 2026-11-21 | `meta.recordedBy` defaults to `LLMEMO_RECORDED_BY`, else `ci` when `CI` is set, `claude` when `CLAUDECODE=1`, else `developer`. `codeVersion` is set only when the caller passes it (`git_code_version()` helps) | Follows Threshold. Running git on every cache open would be slow in big repos |
 | 2026-11-21 | Added a spending ledger (M7), modeled on Threshold's `llm-spend/`, before the backends | Spending should be tracked over time, including while the backends are developed. This is new, not the withdrawn run manifest (T2), which listed the entries a run used |
-| 2026-11-21 | Ledger rows are canonical JSON lines with their own `ledgerFormat`, in `<root>/<branch>/<developer>.jsonl`, with names made safe by replacing other characters with `-`. The developer is `GITHUB_USER`, else git's `user.name`, never an email address | Identical bytes from Python and TypeScript, and paths that work on every file system. Follows Threshold |
+| 2026-11-21 | Ledger rows are canonical JSON lines with their own `ledgerFormat`, in `<root>/<branch>/<developer>.jsonl`, with names made safe by replacing other characters with `-` | Identical bytes from Python and TypeScript, and paths that work on every file system. Follows Threshold |
 | 2026-11-21 | A `call` row is written for every backend call that reported a cost, including a reply that couldn't be recorded and the loser of a recording race (`duplicate: true`). Hits and calls with no reported cost write nothing | The ledger records money spent, and those calls were paid for |
 | 2026-11-21 | `meta.billing` (`api` or `subscription`) is an optional metadata member, also copied into ledger rows | Reports can total real money separately from a subscription's API-equivalent cost (M6). An optional member needs no format change |
 | 2026-11-21 | `key-total` rows are part of the format now, but only the OpenRouter backend will write them | Only a provider with a spending API can report a key's total |
@@ -482,6 +490,11 @@ Newest at the bottom. Include the date and a one-line reason.
 | 2026-11-21 | Each `claude -p` call runs in a new empty temp folder, with the system prompt in a file, the prompt on stdin, and `CLAUDECODE` removed from its environment. `billing` is `subscription` unless `ANTHROPIC_API_KEY` is set | No project files or `CLAUDE.md` leak into the call, long prompts aren't limited by the command line, and it runs inside Claude Code too |
 | 2026-11-21 | The OpenRouter backend reads its key when a call is made. A failure's message keeps only the error body's `error.message`, with the key replaced by `[key]` | Replay needs no key. Error bodies also contain the account's user ID |
 | 2026-11-21 | Version 0.1.0, released as the git tag `v0.1.0`. Users install from the tag | Gives ConceptExpansion a readable pin and a fixed point for bug reports. Still no PyPI |
+| 2026-11-22 | The ledger's developer name is `LLMEMO_DEVELOPER`, else git's `user.name`, else `GITHUB_USER`, else `unknown`. Never an email address | `GITHUB_USER` came first before, so one person got `ForrestTrepte.jsonl` in a codespace and `Forrest-Trepte.jsonl` elsewhere (ConceptExpansion's feedback). git's name is set wherever the person commits. Rows don't hold the developer, so old files can be renamed or concatenated |
+| 2026-11-22 | In replay mode, a cache folder that doesn't exist is an empty cache: lookups miss, and `CacheMiss` says the folder doesn't exist. A folder that exists without `llmemo.json` is still `not-a-cache` | Replaying before the first recording raised `FormatError`, which a harness can't tell from damage (ConceptExpansion's feedback). An existing folder with no marker is the real wrong-folder case |
+| 2026-11-22 | A usage limit is failure kind `usage-limit`, raised as `UsageLimitReached` with `resets_at` and `limit_type`. It's never stored, whatever `failures` is. `ClaudeCli` detects it from the CLI's `api_error: "usage_limit_reached"` and reads the reset time from `api_error_params.rate_limit_info`, with no guessing from message text | A harness can stop and resume from the cache (ConceptExpansion's feedback). A stored one would replay after the limit resets. The CLI marks those members internal, so if they change, the call falls back to `http`/`process` |
+| 2026-11-22 | The devcontainer doesn't keep `~/.claude` on a volume. A rebuild starts Claude Code fresh, so log in again | The volume only helped across rebuilds of one codespace, missed `~/.claude.json`, and needed a root `chown`. Anything worth keeping goes in checked-in files (CLAUDE.md) |
+| 2026-11-22 | Version 0.2.0, tagged `v0.2.0`. It's a minor version, not 0.1.1 | It adds `UsageLimitReached` and `LLMEMO_DEVELOPER`, and changes ledger file names and the missing-folder error. A 0.x package bumps its minor version for new or changed behaviour |
 
 ## Open questions
 
@@ -489,8 +502,14 @@ None right now.
 
 ## Next steps
 
-1. **Hand off to ConceptExpansion** for its harness phase 1. Point it to
-   [Using llmemo](#using-llmemo) above. Don't edit that repo unless the owner asks.
+1. **Tell ConceptExpansion** what 0.2.0 changes for it. Don't edit that repo unless the
+   owner asks:
+   - Upgrade by running the install command in [Using llmemo](#using-llmemo) (`@v0.2.0`).
+   - Catch `UsageLimitReached` to stop at a usage limit and resume after `resets_at`.
+   - Its ledger now goes in one file named after git's `user.name`. It should concatenate
+     its `ForrestTrepte.jsonl` and `Forrest-Trepte.jsonl` on each branch. Rows don't hold
+     the developer, so that's safe.
+   - Replaying before the first recording now raises `CacheMiss`, not `FormatError`.
 2. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
    exists; compare it with the latest `key-total` row, which `OpenRouter.record_key_total`
    writes, to show unseen spending), prune (T3, from hashes collected by `on_entry_used`),
