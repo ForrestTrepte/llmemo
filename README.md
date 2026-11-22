@@ -500,9 +500,17 @@ None right now.
 
 ## Next steps
 
-1. **Hand off to ConceptExpansion** for its harness phase 1. Point it to
-   [Using llmemo](#using-llmemo) above. Don't edit that repo unless the owner asks.
-2. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
+1. **Release 0.2.0** once branch `ce-feedback` (ConceptExpansion's feedback: usage limits,
+   the ledger name, the missing cache folder, and the requirements link) is merged.
+   Follow **Releasing** under Development.
+2. **Tell ConceptExpansion** what 0.2.0 changes for it. Don't edit that repo unless the
+   owner asks:
+   - Catch `UsageLimitReached` to stop at a usage limit and resume after `resets_at`.
+   - Its ledger now goes in one file named after git's `user.name`. It should concatenate
+     its `ForrestTrepte.jsonl` and `Forrest-Trepte.jsonl` on each branch. Rows don't hold
+     the developer, so that's safe.
+   - Replaying before the first recording now raises `CacheMiss`, not `FormatError`.
+3. **Maintenance tools:** a spending report from the ledgers (`summarize_spending`
    exists; compare it with the latest `key-total` row, which `OpenRouter.record_key_total`
    writes, to show unseen spending), prune (T3, from hashes collected by `on_entry_used`),
    a cost and latency report (T4, from `Stats`), and verify (T5, the §8 checks on every
